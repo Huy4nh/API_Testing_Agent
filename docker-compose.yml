@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  bot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env
+    command: ["python", "-m", "app.main"]
+    depends_on: [postgres, redis]
+    volumes:
+      - ./src:/app/src
+      - ./sessions:/app/sessions
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    env_file: .env
+    command: ["celery", "-A", "app.tasks.celery_app:celery", "worker", "-l", "INFO"]
+    depends_on: [postgres, redis]
+    volumes:
+      - ./src:/app/src
+      - ./sessions:/app/sessions
+
+volumes:
+  pgdata:
