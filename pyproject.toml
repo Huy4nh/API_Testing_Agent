@@ -1,16 +1,25 @@
-[project]
-name = "api-testing-agent"
+[tool.poetry]
+name = "API_TESTING_AGENT"
 version = "0.1.0"
-description = ""
-authors = [
-    {name = "Huy4nh",email = "golem25012001@gmail.com"}
-]
+description = "AI chatbot for OpenAPI-based REST API testing"
+authors = ["HuyAnh"]
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-]
+packages = [{ include = "api_testing_agent", from = "src" }]
 
+[tool.poetry.dependencies]
+python = "^3.11"
+python-telegram-bot = "^21.0.1"
+httpx = "^0.27.0"
+pyyaml = "^6.0.1"
+pydantic = "^2.7.0"
+pydantic-settings = "^2.2.1"
+python-dotenv = "^1.0.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+ruff = "^0.3.7"
+mypy = "^1.9.0"
 
 [build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
