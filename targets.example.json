@@ -1,0 +1,16 @@
+[
+  {
+    "name": "cms_local",
+    "base_url": "http://127.0.0.1:8000",
+    "openapi_spec_path": "./specs/cms_local.yaml",
+    "auth_bearer_token": "replace_me_if_needed",
+    "enabled": true
+  },
+  {
+    "name": "cms_staging",
+    "base_url": "https://staging.example.com",
+    "openapi_spec_url": "https://staging.example.com/openapi.json",
+    "auth_bearer_token": "replace_me_if_needed",
+    "enabled": true
+  }
+]

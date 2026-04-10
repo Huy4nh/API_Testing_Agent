@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "API_TESTING_AGENT"
+name = "api-testing-agent"
 version = "0.1.0"
 description = "AI chatbot for OpenAPI-based REST API testing"
-authors = ["HuyAnh"]
+authors = ["Huy Anh <huynhnguyenhuyanh.work@gmail.com>"]
 readme = "README.md"
 packages = [{ include = "api_testing_agent", from = "src" }]
 
