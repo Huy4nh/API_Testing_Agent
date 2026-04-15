@@ -1,0 +1,84 @@
+openapi: 3.0.0
+info:
+  title: Demo CMS API
+  version: 1.0.0
+
+paths:
+  /posts:
+    get:
+      tags:
+        - posts
+      summary: List posts
+      responses:
+        "200":
+          description: OK
+
+    post:
+      tags:
+        - posts
+      summary: Create post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - content
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                published:
+                  type: boolean
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - title
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                  content:
+                    type: string
+
+  /posts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+
+    get:
+      tags:
+        - posts
+      summary: Get post detail
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+
+    delete:
+      tags:
+        - posts
+      summary: Delete post
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not Found
