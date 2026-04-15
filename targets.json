@@ -1,0 +1,15 @@
+[
+  {
+    "name": "cms_local",
+    "base_url": "http://127.0.0.1:8000",
+    "openapi_spec_path": "./specs/cms_local.yaml",
+    "enabled": true
+  },
+  {
+    "name": "image_api",
+    "base_url": "https://gnat-cuddly-supposedly.ngrok-free.app",
+    "openapi_spec_url": "https://gnat-cuddly-supposedly.ngrok-free.app/openapi.json",
+    "auth_bearer_token": "replace_me_if_needed",
+    "enabled": true
+  }
+]
