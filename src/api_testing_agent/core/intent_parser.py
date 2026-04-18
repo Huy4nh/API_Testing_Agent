@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from api_testing_agent.core.models import HttpMethod, TestPlan, TestType
+from api_testing_agent.core.nl_interpreter import NaturalLanguageInterpreter
 
 
 class IntentParseError(ValueError):
@@ -10,6 +11,9 @@ class IntentParseError(ValueError):
 
 
 class RuleBasedIntentParser:
+    def __init__(self, interpreter: NaturalLanguageInterpreter | None = None) -> None:
+        self._interpreter = interpreter or NaturalLanguageInterpreter()
+
     _METHOD_PATTERNS = {
         HttpMethod.GET: r"\bGET\b",
         HttpMethod.POST: r"\bPOST\b",
@@ -65,14 +69,15 @@ class RuleBasedIntentParser:
             raise IntentParseError("Empty request.")
 
         raw = text.strip()
+        normalized = self._interpreter.normalize(raw)
 
-        target_name = self._extract_target_name(raw)
-        methods = self._extract_methods(raw)
-        test_types = self._extract_test_types(raw)
-        tags = self._extract_tags(raw)
-        paths = self._extract_paths(raw)
-        ignore_fields = self._extract_ignore_fields(raw)
-        limit = self._extract_limit(raw)
+        target_name = self._extract_target_name(normalized)
+        methods = self._extract_methods(normalized)
+        test_types = self._extract_test_types(normalized)
+        tags = self._extract_tags(normalized)
+        paths = self._extract_paths(normalized)
+        ignore_fields = self._extract_ignore_fields(normalized)
+        limit = self._extract_limit(normalized)
 
         if not methods:
             methods = [
@@ -104,8 +109,8 @@ class RuleBasedIntentParser:
 
     def _extract_target_name(self, raw: str) -> str | None:
         patterns = [
-            r"(?:target|env|system)\s*[:=]?\s*([a-zA-Z0-9_-]+)",
-            r"(?:mục\s*tiêu|muc\s*tieu)\s*[:=]?\s*([a-zA-Z0-9_-]+)",
+            r"\b(?:target|env|system)\b\s*[:=]?\s*([a-zA-Z0-9_-]+)",
+            r"\b(?:mục\s*tiêu|muc\s*tieu)\b\s*[:=]?\s*([a-zA-Z0-9_-]+)",
         ]
 
         for pattern in patterns:
@@ -122,7 +127,7 @@ class RuleBasedIntentParser:
             if re.search(pattern, raw, flags=re.IGNORECASE):
                 methods.append(method)
 
-        return methods
+        return list(dict.fromkeys(methods))
 
     def _extract_test_types(self, raw: str) -> list[TestType]:
         lower = raw.lower()
@@ -144,8 +149,8 @@ class RuleBasedIntentParser:
 
     def _extract_tags(self, raw: str) -> list[str]:
         patterns = [
-            r"(?:module|tag)\s*[:=]?\s*([a-zA-Z0-9_-]+)",
-            r"(?:mô\s*đun|mo\s*dun|nhóm)\s*[:=]?\s*([a-zA-Z0-9_-]+)",
+            r"\b(?:module|tag)\b\s*[:=]?\s*([a-zA-Z0-9_-]+)",
+            r"\b(?:mô\s*đun|mo\s*dun|nhóm)\b\s*[:=]?\s*([a-zA-Z0-9_-]+)",
         ]
 
         tags: list[str] = []
