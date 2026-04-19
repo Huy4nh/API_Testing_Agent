@@ -6,10 +6,16 @@
     "enabled": true
   },
   {
-    "name": "image_api",
+    "name": "hello_world_love",
     "base_url": "https://gnat-cuddly-supposedly.ngrok-free.app",
     "openapi_spec_url": "https://gnat-cuddly-supposedly.ngrok-free.app/openapi.json",
     "auth_bearer_token": "replace_me_if_needed",
+    "enabled": true
+  },
+  {
+    "name": "ngrok_live",
+    "base_url": "https://gnat-cuddly-supposedly.ngrok-free.app",
+    "openapi_spec_url": "https://gnat-cuddly-supposedly.ngrok-free.app/openapi.json",
     "enabled": true
   }
 ]
