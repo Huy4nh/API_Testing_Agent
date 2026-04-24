@@ -7,7 +7,6 @@
 [![Telegram Bot](https://img.shields.io/badge/interface-telegram-2CA5E0.svg)](#18-telegram-bot)
 [![SQLite](https://img.shields.io/badge/storage-sqlite-003B57.svg)](#24-persistence-and-history)
 [![Docker](https://img.shields.io/badge/runtime-docker-2496ED.svg)](#16-running-with-docker)
-[![License](https://img.shields.io/badge/license-academic%20prototype-lightgrey.svg)](#39-license)
 
 ---
 
