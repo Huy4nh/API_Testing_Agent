@@ -1,11 +1,13 @@
 # API Testing Agent
 
-> OpenAPI-driven API testing assistant with dynamic multi-target support, natural-language test commands, structured reports, and persistent run history.
+> Multi-target, OpenAPI-driven REST API testing chatbot with Telegram interface, structured reporting, and persistent test history.
 
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](#development)
-[![Poetry](https://img.shields.io/badge/dependency-poetry-blueviolet.svg)](#development)
-[![Telegram Bot](https://img.shields.io/badge/interface-telegram-2CA5E0.svg)](#telegram-bot)
-[![SQLite](https://img.shields.io/badge/storage-sqlite-003B57.svg)](#reporting-and-history)
+[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](#10-development-environment)
+[![Poetry](https://img.shields.io/badge/dependency-poetry-blueviolet.svg)](#11-package-management)
+[![Telegram Bot](https://img.shields.io/badge/interface-telegram-2CA5E0.svg)](#18-telegram-bot)
+[![SQLite](https://img.shields.io/badge/storage-sqlite-003B57.svg)](#24-persistence-and-history)
+[![Docker](https://img.shields.io/badge/runtime-docker-2496ED.svg)](#16-running-with-docker)
+[![License](https://img.shields.io/badge/license-academic%20prototype-lightgrey.svg)](#39-license)
 
 ---
 
