@@ -8,7 +8,7 @@
 [![SQLite](https://img.shields.io/badge/storage-sqlite-003B57.svg)](#24-persistence-and-history)
 [![Docker](https://img.shields.io/badge/runtime-docker-2496ED.svg)](#16-running-with-docker)
 
-<img width="100%" height="400" alt="API Testing Hub" src="https://github.com/user-attachments/assets/4e2b48f1-b702-4050-a50b-408c183644a7" />
+<img width="100%" height="450" alt="API Testing Hub" src="https://github.com/user-attachments/assets/4e2b48f1-b702-4050-a50b-408c183644a7" />
 
 ---
 
