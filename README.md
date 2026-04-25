@@ -7,7 +7,8 @@
 [![Telegram Bot](https://img.shields.io/badge/interface-telegram-2CA5E0.svg)](#18-telegram-bot)
 [![SQLite](https://img.shields.io/badge/storage-sqlite-003B57.svg)](#24-persistence-and-history)
 [![Docker](https://img.shields.io/badge/runtime-docker-2496ED.svg)](#16-running-with-docker)
-<img width="800" height="450" alt="API Testing Hub" src="https://github.com/user-attachments/assets/8a2beed8-0b4a-4f79-b1bf-aca1b9564a73" />
+
+<img width="800" height="450" alt="API Testing Hub" src="https://github.com/user-attachments/assets/4e2b48f1-b702-4050-a50b-408c183644a7" />
 
 ---
 
