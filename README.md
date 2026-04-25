@@ -1,4 +1,4 @@
-# API Testing Agent
+# API Testing Hub
 
 > Multi-target, OpenAPI-driven REST API testing chatbot with Telegram interface, structured reporting, and persistent test history.
 
