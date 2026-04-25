@@ -1,4 +1,4 @@
-# API Testing Hub
+# ![API Testing Hub Logo](https://github.com/user-attachments/assets/b7c3a3b5-734e-445a-bbd9-63a0b639f9dc)
 
 > Multi-target, OpenAPI-driven REST API testing chatbot with Telegram interface, structured reporting, and persistent test history.
 
