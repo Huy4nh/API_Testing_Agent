@@ -1,4 +1,4 @@
-# API Testing Agent
+# ![API Testing Hub Logo](https://github.com/user-attachments/assets/b7c3a3b5-734e-445a-bbd9-63a0b639f9dc)
 
 > Multi-target, OpenAPI-driven REST API testing chatbot with Telegram interface, structured reporting, and persistent test history.
 
@@ -7,139 +7,192 @@
 [![Telegram Bot](https://img.shields.io/badge/interface-telegram-2CA5E0.svg)](#18-telegram-bot)
 [![SQLite](https://img.shields.io/badge/storage-sqlite-003B57.svg)](#24-persistence-and-history)
 [![Docker](https://img.shields.io/badge/runtime-docker-2496ED.svg)](#16-running-with-docker)
+<p align="center">
+  <img width="100%" height="450" alt="API Testing Hub" src="https://github.com/user-attachments/assets/4e2b48f1-b702-4050-a50b-408c183644a7" />
+</p>
 
 ---
 
-## Overview
+A review-first, OpenAPI-driven REST API testing assistant that helps interpret user test requests, resolve targets, narrow or broaden testing scope, generate draft test cases, and refine them through iterative feedback before any real execution is performed.
 
-**API Testing Agent** is a multi-target REST API testing system that uses **OpenAPI/Swagger** as the source of truth for discovering endpoints, request schemas, response expectations, and security rules.
+## Current Project Status
 
-It is designed to let teams trigger test runs from concise commands or natural-language chat, execute real requests against real API targets, validate results, generate structured reports, and keep a persistent history of runs.
+This project is currently centered on a **review-first workflow**.
 
-The project is built around a clear separation of concerns:
+The most mature and stable parts of the system are:
 
-- natural-language interpretation
-- strict command parsing
-- OpenAPI ingestion
-- deterministic test generation
-- real request execution
-- structured validation
-- persistent reporting
+- dynamic target selection
+- natural-language request understanding
+- scope/function resolution after target selection
+- AI-assisted draft test case generation
+- multi-round review and feedback refinement
+- OpenAPI ingestion and operation extraction
+- structured draft reporting
 
----
-
-## Key Features
-
-- **Dynamic multi-target support** via `targets.json`
-- **Natural-language test commands** with backward-compatible canonical commands
-- **OpenAPI ingestion** from local files or remote URLs
-- **Automatic test generation** for common positive and negative cases
-- **Real HTTP execution** with `httpx`
-- **Structured response validation**
-- **JSON + Markdown reports** per run
-- **SQLite-backed run history**
-- **Telegram bot interface** for remote control
+The execution, runtime validation, and final result-reporting branches exist as project directions, but the most reliable and actively refined flow right now is the **draft generation + review loop**.
 
 ---
 
-## Core Capabilities
+## Core Goals
 
-### 1. Dynamic Target Resolution
-Targets are loaded at runtime from `targets.json`. They are not hard-coded in the parser or interpreter.
+The system is designed to:
 
-Each target can define:
-
-- `name`
-- `base_url`
-- `openapi_spec_path`
-- `openapi_spec_url`
-- `auth_bearer_token`
-- `enabled`
-
-### 2. Layered Command Understanding
-The command pipeline is intentionally layered:
-
-1. **DynamicTargetResolver** resolves the target from runtime registry data
-2. **DomainAliasResolver** maps domain phrases to tags, paths, or methods
-3. **NaturalLanguageInterpreter** converts chat-like input into canonical commands
-4. **RuleBasedIntentParser** converts canonical commands into a `TestPlan`
-
-This keeps the user-facing interface flexible while preserving a deterministic execution pipeline.
-
-### 3. OpenAPI-Driven Execution
-The system reads OpenAPI definitions and extracts:
-
-- endpoints
-- HTTP methods
-- parameters
-- request body schemas
-- response schemas
-- security requirements
-
-### 4. Test Generation
-The generator supports five core test categories:
-
-- positive
-- missing required field
-- invalid type or format
-- unauthorized / forbidden
-- resource not found
-
-### 5. Validation and Reporting
-Each run validates responses and emits:
-
-- status checks
-- required field checks
-- schema-oriented checks
-- JSON report
-- Markdown report
-- persistent SQLite history
+1. read OpenAPI / Swagger specifications
+2. resolve which API target the user wants to test
+3. understand whether the user wants to test:
+   - a specific function / endpoint / module
+   - or the entire target
+4. generate draft test cases for the selected scope
+5. let the user review and refine those draft cases through feedback
+6. preserve a structured path toward future execution and reporting
 
 ---
 
-## Architecture
+## Current Behavior Rules
+
+### 1. Target resolution
+
+The project currently uses a target-selection flow with these rules:
+
+- if exactly one target matches the user request, it is selected automatically
+- if multiple targets are plausible, the user is asked to choose
+- if no target can be resolved, the system reports that the target could not be found
+
+This part is considered stable and should not be changed casually.
+
+### 2. Function / scope resolution after target is known
+
+Once the target is resolved, the project follows these rules:
+
+#### If the user specifies a valid function
+The system must test that function specifically.
+
+Examples:
+- image generation on a target
+- login on a target
+- a specific endpoint such as `/posts` with `GET`
+
+#### If the user does not specify any concrete function
+The system must interpret the request as:
+
+**test the entire target**
+
+This is a critical rule.
+
+For example, if the user says something like:
 
 ```text
-Telegram User
+test hello for me
+```
+
+and the target is resolved to `hello_world`, the system must **not** arbitrarily collapse the request into a single endpoint like `/img POST`.
+
+Instead, it should proceed as a broad request over the whole target.
+
+#### If the user specifies an invalid or non-existent function
+The system must:
+- avoid guessing
+- avoid silently falling back to another function
+- report that the requested function could not be found
+- return the available functions / operations of the target
+
+### 3. Review feedback must be able to change scope
+
+Feedback in the review loop must not only rewrite test case wording. It must also be able to modify the operation scope itself.
+
+Examples of supported feedback styles:
+
+- only test image generation
+- add post creation as well
+- remove YT and FB
+- reset to all operations
+
+This is handled by a separate feedback-scope refinement layer.
+
+---
+
+## High-Level Architecture
+
+```text
+User request
     ↓
-Telegram Bot
+Target candidate retrieval
     ↓
-Orchestrator
-    ├── NaturalLanguageInterpreter
-    │     ├── DynamicTargetResolver
-    │     └── DomainAliasResolver
-    ├── RuleBasedIntentParser
-    ├── Target Registry
-    ├── OpenAPI Ingestor
-    ├── Test Case Generator
-    ├── Execution Engine
-    ├── Validator
-    ├── Reporter
-    └── SQLite Store
+Target disambiguation
+    ↓
+Selected target
+    ↓
+Request understanding
+    ↓
+Scope resolution
+    ├── specific function
+    ├── all functions in target
+    └── invalid function
+    ↓
+Operation filtering
+    ↓
+AI draft test case generation
+    ↓
+Review graph
+    ↓
+Feedback scope refinement
+    ↓
+Regenerated draft
 ```
 
 ---
 
-## Example Commands
+## Current Main Flow
 
-### Canonical commands
+### Step 1 — User submits a request
 
-```text
- test target cms_local module posts GET
- test target ngrok_live module auth negative
- test target cms_local /posts GET limit 5
- test target cms_local module posts POST ignore field image
-```
+Examples:
+- `test hello for me`
+- `test the image generation function of hello_world`
+- `test login on cms_local`
+- `test /posts GET on cms_local`
 
-### Natural-language commands
+### Step 2 — Resolve the target
 
-```text
- Test the posts APIs on local, GET only, limit to 5 endpoints, ignore image.
- Run negative login tests on ngrok.
- On local, test /posts with GET for the first 3 endpoints.
- Fetch Facebook content on ngrok.
- Post to X from local.
-```
+The system searches target candidates from the target registry.
+
+- one match → auto-select
+- many matches → ask user to choose
+- no match → stop with target-not-found response
+
+### Step 3 — Resolve the scope
+
+After the target is known, the system decides whether the request means:
+
+- **specific**: a concrete operation, path, or tag/module
+- **all**: the user wants to test the whole target
+- **invalid_function**: the user mentioned a function that cannot be mapped to the OpenAPI inventory
+
+### Step 4 — Build the test plan
+
+The system transforms the resolved intent into a structured plan containing:
+
+- target name
+- selected paths or tags if any
+- HTTP methods if constrained
+- requested test types
+- ignore-field directives
+- endpoint limit if specified
+
+### Step 5 — Generate draft test cases
+
+The system builds operation contexts from OpenAPI and generates test case drafts for the active scope.
+
+### Step 6 — Review / revise / approve
+
+The user can:
+- approve
+- cancel
+- revise with feedback
+
+### Step 7 — Refine scope from feedback
+
+If the user feedback changes the intended scope, the system updates the active operation set and regenerates the draft.
 
 ---
 
@@ -147,87 +200,297 @@ Orchestrator
 
 ```text
 API_Testing_Agent/
-  .env.example
-  targets.json
-  src/
-    api_testing_agent/
-      main.py
-      config.py
-      bot/
-        telegram_bot.py
-      core/
-        models.py
-        dynamic_target_resolver.py
-        domain_alias_resolver.py
-        nl_interpreter.py
-        intent_parser.py
-        openapi_ingestor.py
-        testcase_generator.py
-        execution_engine.py
-        validator.py
-        reporter.py
-      tasks/
-        orchestrator.py
-      db/
-        sqlite_store.py
-  data/
-  reports/
-  tests/
+├── .env
+├── .env.example
+├── pyproject.toml
+├── poetry.lock
+├── README.md
+├── targets.json
+├── targets.example.json
+├── specs/
+│   └── cms_local.yaml
+├── data/
+├── reports/
+├── src/
+│   └── api_testing_agent/
+│       ├── config.py
+│       ├── logging_config.py
+│       ├── main.py
+│       ├── manual_review_workflow_test.py
+│       ├── bot/
+│       │   └── telegram_bot.py
+│       ├── core/
+│       │   ├── ai_testcase_agent.py
+│       │   ├── ai_testcase_models.py
+│       │   ├── feedback_scope_agent.py
+│       │   ├── feedback_scope_models.py
+│       │   ├── feedback_scope_refiner.py
+│       │   ├── intent_parser.py
+│       │   ├── models.py
+│       │   ├── nl_interpreter.py
+│       │   ├── openapi_ingestor.py
+│       │   ├── openapi_ref_resolver.py
+│       │   ├── reporter.py
+│       │   ├── request_understanding_service.py
+│       │   ├── schema_faker.py
+│       │   ├── scope_resolution_agent.py
+│       │   ├── scope_resolution_models.py
+│       │   ├── target_candidate_service.py
+│       │   ├── target_disambiguation_agent.py
+│       │   ├── target_disambiguation_models.py
+│       │   ├── target_registry.py
+│       │   ├── testcase_generator.py
+│       │   ├── testcase_normalizer.py
+│       │   ├── testcase_review_graph.py
+│       │   ├── validator.py
+│       │   └── reporter/
+│       │       └── testcase/
+│       │           └── testcase_reporter.py
+│       ├── db/
+│       │   └── sqlite_store.py
+│       └── tasks/
+│           └── orchestrator.py
+└── tests/
 ```
 
 ---
 
-## Configuration
+## Important Source Components
 
-### `.env`
+### `tasks/orchestrator.py`
+The main coordinator of the current workflow.
 
-```env
-TARGET_REGISTRY_PATH=./targets.json
-HTTP_TIMEOUT_SECONDS=15
-MAX_CONCURRENCY=5
-SQLITE_PATH=./data/runs.sqlite3
-REPORT_OUTPUT_DIR=./reports
-TELEGRAM_BOT_TOKEN=replace_me
-```
+It is responsible for:
+- target selection
+- request understanding
+- building operation hints
+- filtering operations
+- starting the review graph
+- resuming review
+- catching invalid-function errors
+- returning structured workflow results
 
-### `targets.json`
+### `core/request_understanding_service.py`
+The main service for turning a target-resolved user request into an actionable plan.
 
-```json
-[
-  {
-    "name": "cms_local",
-    "base_url": "http://127.0.0.1:8000",
-    "openapi_spec_path": "./specs/cms_local.yaml",
-    "enabled": true
-  },
-  {
-    "name": "ngrok_live",
-    "base_url": "https://example.ngrok-free.app",
-    "openapi_spec_url": "https://example.ngrok-free.app/openapi.json",
-    "enabled": true
-  }
-]
-```
+It handles:
+- canonical command compatibility
+- scope resolution
+- resolved plan building
+- invalid function detection
+- deterministic canonical command reconstruction
+
+### `core/scope_resolution_agent.py`
+AI-assisted scope resolver for the initial user request after target selection.
+
+It decides whether the request should be treated as:
+- `specific`
+- `all`
+- `invalid_function`
+
+### `core/feedback_scope_agent.py`
+AI-assisted scope resolver specifically for review feedback.
+
+It is separate from the request scope resolver because feedback operates on the **current scope**, not just on the original request.
+
+### `core/feedback_scope_refiner.py`
+Applies feedback-driven scope edits such as:
+- replace scope
+- add scope
+- remove scope
+- reset to all
+
+### `core/target_candidate_service.py`
+Deterministic target candidate finder.
+
+It supports normalized matching strategies such as:
+- exact match
+- compact match
+- normalized match
+- prefix match
+- fuzzy similarity match
+
+### `core/target_disambiguation_agent.py`
+Ranks and explains target candidates when the request is ambiguous.
+
+### `core/openapi_ingestor.py`
+Loads OpenAPI specs from local files or remote URLs and extracts normalized operation definitions.
+
+### `core/openapi_ref_resolver.py`
+Handles OpenAPI `$ref` dereferencing.
+
+### `core/testcase_review_graph.py`
+The review loop graph responsible for:
+- generating draft test cases
+- presenting them for review
+- receiving feedback
+- regenerating drafts
+- tracking approval or cancellation
+
+### `core/reporter/testcase/testcase_reporter.py`
+Writes testcase draft reports to:
+- JSON
+- Markdown
+
+and builds the human-readable preview shown in manual review.
 
 ---
 
-## Development
+## Current Review Workflow
+
+The current CLI entry point for the review-first branch is:
+
+```bash
+poetry run python -m api_testing_agent.manual_review_workflow_test
+```
+
+Typical flow:
+
+1. enter a natural-language test request
+2. choose a target if the request is ambiguous
+3. inspect the generated draft cases
+4. provide feedback or approve
+5. repeat until satisfied
+
+---
+
+## Example Scenarios
+
+### Scenario A — broad request
+
+Input:
+
+```text
+test hello for me
+```
+
+If the user then selects the target `hello_world`, the correct interpretation is:
+
+- test the entire target
+- not a single arbitrarily chosen endpoint
+
+Expected broad canonical behavior:
+
+```text
+test target hello_world
+```
+
+### Scenario B — specific function request
+
+Input:
+
+```text
+test the image generation function of hello_world
+```
+
+Expected behavior:
+
+- resolve target `hello_world`
+- resolve function to the correct image-related operation
+- generate draft cases only for that scope
+
+### Scenario C — invalid function request
+
+Input:
+
+```text
+test the payment function of hello_world
+```
+
+Expected behavior:
+
+- detect that payment does not exist for that target
+- do not guess
+- return the available target functions
+
+---
+
+## Feedback Scope Examples
+
+The current direction of the project expects feedback like these to affect scope:
+
+### Replace scope
+
+```text
+only test image generation
+```
+
+Expected effect:
+- replace current scope with image-generation operations only
+
+### Add scope
+
+```text
+add post creation as well
+```
+
+Expected effect:
+- keep current scope
+- add matching post-creation operations
+
+### Remove scope
+
+```text
+remove YT and FB
+```
+
+Expected effect:
+- remove matching YouTube and Facebook operations from the current scope
+
+### Reset scope
+
+```text
+test all again
+```
+
+Expected effect:
+- restore full target scope
+
+---
+
+## Dependencies and Current Runtime Notes
+
+The project currently still depends on several older foundational files that may look legacy but are still used by runtime import chains:
+
+- `core/nl_interpreter.py`
+- `core/domain_alias_resolver.py`
+- `core/dynamic_target_resolver.py`
+- `core/intent_parser.py`
+
+These should **not** be deleted unless runtime imports are first removed and validated.
+
+---
+
+## Tests That Matter Most Right Now
+
+The most important tests for the current architecture are:
+
+- `tests/test_request_understanding_service_scope.py`
+- `tests/test_review_only_orchestrator_scope_resolution.py`
+- `tests/test_review_only_orchestrator_target_selection.py`
+- `tests/test_feedback_scope_refiner.py`
+- `tests/test_review_feedback_scope_refinement.py`
+- `tests/test_target_candidate_service.py`
+- `tests/test_target_registry.py`
+- `tests/test_openapi_schema/test_openapi_ingestor.py`
+- `tests/test_openapi_schema/test_openapi_ref_resolver.py`
+- `tests/test_openapi_schema/test_schema_faker.py`
+- `tests/test_generator/ai/test_testcase_review_graph.py`
+- `tests/test_reporter/testcase/test_testcase_draft_reporter.py`
+
+---
+
+## Development Setup
 
 ### Requirements
 
 - Python 3.11+
 - Poetry
 
-### Install
+### Install dependencies
 
 ```bash
 poetry install
-```
-
-### Run locally
-
-```bash
-poetry run python -m api_testing_agent.main
 ```
 
 ### Run tests
@@ -236,73 +499,50 @@ poetry run python -m api_testing_agent.main
 poetry run pytest tests -v
 ```
 
----
+### Run manual review workflow
 
-## Telegram Bot
-
-The bot acts as the primary operator interface.
-
-Typical commands include:
-
-- `/start`
-- `/help`
-- `/targets`
-- `/last_runs`
-
-Users can also send test requests directly as messages.
+```bash
+poetry run python -m api_testing_agent.manual_review_workflow_test
+```
 
 ---
 
-## Reporting and History
+## Current Design Constraints
 
-Each run produces:
+These are important and should not be broken by future work:
 
-- a JSON report
-- a Markdown report
-- a persistent SQLite record
-
-This makes it possible to:
-
-- review previous runs
-- compare failures over time
-- inspect execution details
-- reuse reports in debugging workflows
+1. Do not auto-pick a single endpoint when the user did not specify a concrete function.
+2. Keep the current target-selection behavior stable.
+3. Feedback must be able to alter operation scope, not only wording.
+4. Do not delete “legacy-looking” files until runtime imports are confirmed removed.
+5. Prefer deterministic orchestration around AI outputs rather than allowing the model to invent target or scope freely.
 
 ---
 
-## Design Principles
+## Roadmap Direction
 
-- **Deterministic execution** after intent parsing
-- **Runtime-configured targets**, not hard-coded environments
-- **Backward compatibility** for structured commands
-- **Separation of interpretation and parsing**
-- **Additive extensibility** for new targets and domain aliases
-- **Clear operational visibility** through reports and history
+The current project is in a strong position to continue toward:
 
----
-
-## Current Limitations
-
-- functional API testing only
-- no performance/load testing
-- no websocket support
-- no advanced stateful API exploration
-- local `$ref` support only
-- natural-language support is intentionally constrained for predictability
+- richer Telegram bot integration
+- execution-stage integration after review approval
+- validation and final result-reporting
+- better persistence of review threads and feedback history
+- more advanced function resolution and domain aliasing
+- project cleanup and consolidation once runtime dependencies are fully mapped
 
 ---
 
-## Roadmap
+## Notes for Future Refactoring
 
-- richer domain alias profiles per target
-- stronger JSON Schema validation coverage
-- improved stateful test sequencing
-- CI/CD integration
-- web dashboard for test history and reports
-- role-based access and target governance
+Some parts of the codebase still reflect earlier iterations and experiments. Before removing or refactoring files, always verify both:
+
+1. runtime imports
+2. test dependencies
+
+A file should only be considered safe to delete when it is no longer required by either.
 
 ---
 
-## License
+## License / Usage
 
-Currently maintained as a proprietary product codebase / internal project unless stated otherwise.
+This repository is currently maintained as a project codebase and should be treated according to the repository owner’s usage policy.
