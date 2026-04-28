@@ -14,6 +14,11 @@ pyyaml = "^6.0.1"
 pydantic = "^2.7.0"
 pydantic-settings = "^2.2.1"
 python-dotenv = "^1.0.1"
+langchain = "^1.2.15"
+langchain-openai = "^1.2.1"
+langgraph = "^1.1.9"
+langgraph-checkpoint-sqlite = "^3.0.3"
+langchain-anthropic = "^1.4.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

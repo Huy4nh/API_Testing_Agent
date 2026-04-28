@@ -60,12 +60,19 @@ class NaturalLanguageInterpreter:
 
         raw = text.strip()
 
-        # Nếu đã là canonical command kiểu cũ thì giữ nguyên hoàn toàn
+        # Nếu đã là canonical command thì giữ nguyên
         if self._looks_like_canonical_command(raw):
             return raw
 
         searchable = DynamicTargetResolver.to_searchable_text(raw)
+
         resolved = self._resolver.resolve(searchable)
+
+        # Quan trọng: tránh crash khi resolver trả None
+        resolved_methods = list(getattr(resolved, "methods", []) or [])
+        resolved_tags = list(getattr(resolved, "tags", []) or [])
+        resolved_paths = list(getattr(resolved, "paths", []) or [])
+        resolved_extra_tokens = list(getattr(resolved, "extra_tokens", []) or [])
 
         parts: list[str] = ["test"]
 
@@ -76,16 +83,16 @@ class NaturalLanguageInterpreter:
         explicit_methods = self._detect_explicit_methods(searchable)
         if explicit_methods:
             methods = explicit_methods
-        elif resolved.methods:
-            methods = resolved.methods
+        elif resolved_methods:
+            methods = resolved_methods
         else:
             methods = self._detect_natural_methods(searchable)
 
-        tags = resolved.tags
+        tags = resolved_tags
 
         paths = self._extract_paths(raw)
         if not paths:
-            paths = resolved.paths
+            paths = resolved_paths
 
         test_markers = self._detect_test_markers(searchable)
         limit = self._extract_limit(searchable)
@@ -106,7 +113,7 @@ class NaturalLanguageInterpreter:
         for field_name in ignore_fields:
             parts.extend(["ignore", "field", field_name])
 
-        for token in resolved.extra_tokens:
+        for token in resolved_extra_tokens:
             parts.append(token)
 
         canonical = " ".join(parts)

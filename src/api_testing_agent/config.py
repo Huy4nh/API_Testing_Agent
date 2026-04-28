@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -16,3 +17,12 @@ class Settings(BaseSettings):
     sqlite_path: str = Field(default="./data/runs.sqlite3", alias="SQLITE_PATH")
     report_output_dir: str = Field(default="./reports", alias="REPORT_OUTPUT_DIR")
     telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
+
+    testcase_generator_mode: str = Field(default="rule", alias="TESTCASE_GENERATOR_MODE")
+    langchain_model_name: str = Field(default="openai:gpt-5.2", alias="LANGCHAIN_MODEL_NAME")
+
+    langgraph_checkpointer: str = Field(default="memory", alias="LANGGRAPH_CHECKPOINTER")
+    langgraph_sqlite_path: str = Field(
+        default="./data/langgraph_checkpoints.db",
+        alias="LANGGRAPH_SQLITE_PATH",
+    )
