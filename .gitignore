@@ -8,6 +8,7 @@ targets.json
 data/*
 !data/.gitkeep
 reports/*
+document/*
 !reports/.gitkeep
 .pytest_cache/
 .mypy_cache/
