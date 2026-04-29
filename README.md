@@ -113,6 +113,11 @@ This is handled by a separate feedback-scope refinement layer.
 
 ## High-Level Architecture
 
+### UML Diagram
+<img width="2899" height="4989" alt="mermaid-diagram (2)" src="https://github.com/user-attachments/assets/95e24109-37b8-4d66-94fc-121ad352551c" />
+
+
+### Explaining
 ```text
 User request
     ↓
