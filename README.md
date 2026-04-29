@@ -203,7 +203,7 @@ If the user feedback changes the intended scope, the system updates the active o
 ---
 
 ## Project Structure
-
+### Skeleton
 ```text
 API_Testing_Agent/
 ├── .env
