@@ -6,7 +6,6 @@ from typing import Any
 
 from api_testing_agent.core.intent_parser import RuleBasedIntentParser
 from api_testing_agent.core.models import HttpMethod, TestType
-from api_testing_agent.core.nl_interpreter import NaturalLanguageInterpreter
 from api_testing_agent.core.scope_resolution_agent import ScopeResolutionAgent
 from api_testing_agent.core.scope_resolution_models import ScopeResolutionDecision
 
@@ -37,32 +36,19 @@ class UnderstandingResult:
     original_text: str
     canonical_command: str
     plan: ResolvedPlan
+    explanation: str
 
 
 class RequestUnderstandingService:
-    """
-    Flow mới:
-    1. Nếu input đã là canonical command thì parse theo parser cũ để giữ backward compatibility.
-    2. Nếu là natural language:
-       - target đã được resolve từ trước
-       - scope_resolution_agent quyết định:
-         * all
-         * specific
-         * invalid_function
-       - sau đó build plan một cách deterministic
-    """
-
     DEFAULT_LIMIT = 50
 
     def __init__(
         self,
         *,
         parser: RuleBasedIntentParser | None = None,
-        nl_interpreter: NaturalLanguageInterpreter | None = None,
         scope_resolution_agent: ScopeResolutionAgent | None = None,
     ) -> None:
         self._parser = parser or RuleBasedIntentParser()
-        self._nl_interpreter = nl_interpreter or NaturalLanguageInterpreter()
         self._scope_resolution_agent = scope_resolution_agent
 
     def understand(
@@ -79,10 +65,8 @@ class RequestUnderstandingService:
         if not forced_target_name:
             raise UnderstandingError("forced_target_name is required.")
 
-        # 1. backward compatibility cho canonical command
         if self._looks_like_canonical_command(cleaned):
-            canonical_command = self._inject_or_replace_target(cleaned, forced_target_name)
-            parsed = self._parser.parse(canonical_command)
+            parsed = self._parser.parse(cleaned)
             plan = ResolvedPlan(
                 target_name=parsed.target_name or forced_target_name,
                 tags=list(parsed.tags),
@@ -94,18 +78,17 @@ class RequestUnderstandingService:
             )
             return UnderstandingResult(
                 original_text=cleaned,
-                canonical_command=canonical_command,
+                canonical_command=cleaned,
                 plan=plan,
+                explanation="Yêu cầu đã ở dạng canonical command, giữ nguyên và parse trực tiếp.",
             )
 
         if self._scope_resolution_agent is None:
-            raise UnderstandingError(
-                "ScopeResolutionAgent is required for natural-language understanding."
-            )
+            raise UnderstandingError("ScopeResolutionAgent is required.")
 
-        scope_decision = self._scope_resolution_agent.decide(
+        decision = self._scope_resolution_agent.decide(
             raw_text=cleaned,
-            forced_target_name=forced_target_name,
+            target_name=forced_target_name,
             operation_hints=operation_hints,
         )
 
@@ -113,7 +96,7 @@ class RequestUnderstandingService:
             raw_text=cleaned,
             forced_target_name=forced_target_name,
             operation_hints=operation_hints,
-            scope_decision=scope_decision,
+            decision=decision,
         )
 
     def _build_result_from_scope_decision(
@@ -122,14 +105,14 @@ class RequestUnderstandingService:
         raw_text: str,
         forced_target_name: str,
         operation_hints: list[dict],
-        scope_decision: ScopeResolutionDecision,
+        decision: ScopeResolutionDecision,
     ) -> UnderstandingResult:
         methods_override = self._extract_methods(raw_text)
         test_types = self._extract_test_types(raw_text)
         ignore_fields = self._extract_ignore_fields(raw_text)
         limit_endpoints = self._extract_limit(raw_text) or self.DEFAULT_LIMIT
 
-        if scope_decision.scope_mode == "all":
+        if decision.scope_mode == "all":
             plan = ResolvedPlan(
                 target_name=forced_target_name,
                 tags=[],
@@ -139,140 +122,127 @@ class RequestUnderstandingService:
                 ignore_fields=ignore_fields,
                 limit_endpoints=limit_endpoints,
             )
-
             canonical_command = self._build_canonical_command(plan)
             return UnderstandingResult(
                 original_text=raw_text,
                 canonical_command=canonical_command,
                 plan=plan,
+                explanation=(
+                    f"Đã xác định target là '{forced_target_name}'. "
+                    "User không chỉ rõ chức năng cụ thể nên hệ thống sẽ test toàn bộ chức năng của target."
+                ),
             )
 
-        if scope_decision.scope_mode == "invalid_function":
+        if decision.scope_mode == "invalid_function":
             available_functions = self._build_available_functions(operation_hints)
-            invalid_name = scope_decision.invalid_requested_function or "unknown function"
+            invalid_name = decision.invalid_requested_function or "unknown function"
             raise InvalidFunctionRequestError(
-                (
-                    f"Không tìm thấy chức năng '{invalid_name}' trong target '{forced_target_name}'."
-                ),
+                f"Không tìm thấy chức năng '{invalid_name}' trong target '{forced_target_name}'.",
                 available_functions=available_functions,
             )
 
-        # specific
-        matched_plan = self._build_specific_plan(
-            forced_target_name=forced_target_name,
+        matched = self._resolve_specific_matches(
             operation_hints=operation_hints,
-            scope_decision=scope_decision,
-            methods_override=methods_override,
+            matched_operation_ids=decision.matched_operation_ids,
+            matched_paths=decision.matched_paths,
+            matched_tags=decision.matched_tags,
+        )
+
+        if not matched:
+            raise InvalidFunctionRequestError(
+                f"Không xác định được chức năng cụ thể trong target '{forced_target_name}'.",
+                available_functions=self._build_available_functions(operation_hints),
+            )
+
+        plan = ResolvedPlan(
+            target_name=forced_target_name,
+            tags=[],
+            methods=self._resolve_methods_for_specific(
+                matched=matched,
+                methods_override=methods_override,
+            ),
+            paths=self._resolve_paths_for_specific(matched),
             test_types=test_types,
             ignore_fields=ignore_fields,
             limit_endpoints=limit_endpoints,
         )
+        canonical_command = self._build_canonical_command(plan)
 
-        canonical_command = self._build_canonical_command(matched_plan)
+        matched_labels = [f"{item.get('method', '')} {item.get('path', '')}" for item in matched]
         return UnderstandingResult(
             original_text=raw_text,
             canonical_command=canonical_command,
-            plan=matched_plan,
+            plan=plan,
+            explanation=(
+                f"Đã xác định target là '{forced_target_name}' và đã match đúng chức năng cụ thể: "
+                f"{', '.join(matched_labels)}."
+            ),
         )
 
-    def _build_specific_plan(
+    def _resolve_specific_matches(
         self,
         *,
-        forced_target_name: str,
         operation_hints: list[dict],
-        scope_decision: ScopeResolutionDecision,
+        matched_operation_ids: list[str],
+        matched_paths: list[str],
+        matched_tags: list[str],
+    ) -> list[dict]:
+        matched_ids = {item for item in matched_operation_ids if item}
+        matched_paths_set = {item for item in matched_paths if item}
+        matched_tags_set = {item.lower() for item in matched_tags if item}
+
+        resolved: list[dict] = []
+        for item in operation_hints:
+            op_id = str(item.get("operation_id", ""))
+            path = str(item.get("path", ""))
+            tags = {str(tag).lower() for tag in item.get("tags", [])}
+
+            if matched_ids and op_id in matched_ids:
+                resolved.append(item)
+                continue
+            if matched_paths_set and path in matched_paths_set:
+                resolved.append(item)
+                continue
+            if matched_tags_set and tags.intersection(matched_tags_set):
+                resolved.append(item)
+                continue
+
+        return self._unique_operations(resolved)
+
+    def _resolve_methods_for_specific(
+        self,
+        *,
+        matched: list[dict],
         methods_override: list[HttpMethod],
-        test_types: list[TestType],
-        ignore_fields: list[str],
-        limit_endpoints: int,
-    ) -> ResolvedPlan:
-        operation_by_id = {
-            item.get("operation_id"): item
-            for item in operation_hints
-            if item.get("operation_id")
-        }
+    ) -> list[HttpMethod]:
+        if methods_override:
+            return methods_override
 
-        matched_operation = None
+        methods: list[HttpMethod] = []
+        for item in matched:
+            method = self._coerce_http_method(item.get("method"))
+            if method is not None:
+                methods.append(method)
 
-        if scope_decision.matched_operation_id:
-            matched_operation = operation_by_id.get(scope_decision.matched_operation_id)
+        unique: list[HttpMethod] = []
+        seen: set[str] = set()
+        for method in methods:
+            if method.value not in seen:
+                seen.add(method.value)
+                unique.append(method)
+        return unique
 
-        if matched_operation is None and scope_decision.matched_path and scope_decision.matched_method:
-            for item in operation_hints:
-                if (
-                    item.get("path") == scope_decision.matched_path
-                    and str(item.get("method", "")).upper() == str(scope_decision.matched_method).upper()
-                ):
-                    matched_operation = item
-                    break
+    def _resolve_paths_for_specific(self, matched: list[dict]) -> list[str]:
+        paths: list[str] = []
+        seen: set[str] = set()
 
-        if matched_operation is not None:
-            method = self._coerce_http_method(matched_operation.get("method"))
-            if method is None:
-                raise UnderstandingError("Matched operation has invalid HTTP method.")
+        for item in matched:
+            path = str(item.get("path", ""))
+            if path and path not in seen:
+                seen.add(path)
+                paths.append(path)
 
-            return ResolvedPlan(
-                target_name=forced_target_name,
-                tags=[],
-                methods=[method],
-                paths=[matched_operation["path"]],
-                test_types=test_types,
-                ignore_fields=ignore_fields,
-                limit_endpoints=limit_endpoints,
-            )
-
-        # Nếu không match được 1 operation cụ thể, cho phép match theo path hoặc tag
-        if scope_decision.matched_path:
-            methods = methods_override
-            if scope_decision.matched_method:
-                method = self._coerce_http_method(scope_decision.matched_method)
-                if method is not None:
-                    methods = [method]
-
-            if not any(item.get("path") == scope_decision.matched_path for item in operation_hints):
-                raise InvalidFunctionRequestError(
-                    f"Không tìm thấy path '{scope_decision.matched_path}' trong target '{forced_target_name}'.",
-                    available_functions=self._build_available_functions(operation_hints),
-                )
-
-            return ResolvedPlan(
-                target_name=forced_target_name,
-                tags=[],
-                methods=methods,
-                paths=[scope_decision.matched_path],
-                test_types=test_types,
-                ignore_fields=ignore_fields,
-                limit_endpoints=limit_endpoints,
-            )
-
-        if scope_decision.matched_tag:
-            tag_lower = scope_decision.matched_tag.lower()
-            if not any(tag_lower in {str(tag).lower() for tag in item.get("tags", [])} for item in operation_hints):
-                raise InvalidFunctionRequestError(
-                    f"Không tìm thấy module/tag '{scope_decision.matched_tag}' trong target '{forced_target_name}'.",
-                    available_functions=self._build_available_functions(operation_hints),
-                )
-
-            methods = methods_override
-            if scope_decision.matched_method:
-                method = self._coerce_http_method(scope_decision.matched_method)
-                if method is not None:
-                    methods = [method]
-
-            return ResolvedPlan(
-                target_name=forced_target_name,
-                tags=[scope_decision.matched_tag],
-                methods=methods,
-                paths=[],
-                test_types=test_types,
-                ignore_fields=ignore_fields,
-                limit_endpoints=limit_endpoints,
-            )
-
-        raise InvalidFunctionRequestError(
-            f"Không xác định được chức năng cụ thể trong target '{forced_target_name}'.",
-            available_functions=self._build_available_functions(operation_hints),
-        )
+        return paths
 
     def _build_available_functions(self, operation_hints: list[dict]) -> list[str]:
         lines: list[str] = []
@@ -324,7 +294,6 @@ class RequestUnderstandingService:
             return ["positive"]
 
         tokens: list[str] = []
-
         if TestType.POSITIVE in test_types:
             tokens.append("positive")
         if TestType.UNAUTHORIZED in test_types:
@@ -335,7 +304,6 @@ class RequestUnderstandingService:
             tokens.append("missing")
         if TestType.INVALID_TYPE_OR_FORMAT in test_types:
             tokens.append("invalid")
-
         return tokens
 
     def _negative_test_types(self) -> list[TestType]:
@@ -351,8 +319,6 @@ class RequestUnderstandingService:
 
     def _extract_methods(self, raw_text: str) -> list[HttpMethod]:
         lowered = raw_text.lower()
-
-        methods: list[HttpMethod] = []
         explicit_patterns = {
             HttpMethod.GET: r"\bget\b",
             HttpMethod.POST: r"\bpost\b",
@@ -360,28 +326,19 @@ class RequestUnderstandingService:
             HttpMethod.PATCH: r"\bpatch\b",
             HttpMethod.DELETE: r"\bdelete\b",
         }
-        natural_patterns = {
-            HttpMethod.GET: [r"\bxem\b", r"\bdoc\b", r"\blay\b"],
-            HttpMethod.POST: [r"\btao\b", r"\bgui\b", r"\bcreate\b"],
-            HttpMethod.PUT: [r"\bthay the\b"],
-            HttpMethod.PATCH: [r"\bcap nhat\b", r"\bsua\b", r"\bupdate\b"],
-            HttpMethod.DELETE: [r"\bxoa\b", r"\bremove\b"],
-        }
 
+        methods: list[HttpMethod] = []
         for method, pattern in explicit_patterns.items():
             if re.search(pattern, lowered, flags=re.IGNORECASE):
                 methods.append(method)
 
-        if methods:
-            return list(dict.fromkeys(methods))
-
-        for method, patterns in natural_patterns.items():
-            for pattern in patterns:
-                if re.search(pattern, lowered, flags=re.IGNORECASE):
-                    methods.append(method)
-                    break
-
-        return list(dict.fromkeys(methods))
+        unique: list[HttpMethod] = []
+        seen: set[str] = set()
+        for method in methods:
+            if method.value not in seen:
+                seen.add(method.value)
+                unique.append(method)
+        return unique
 
     def _extract_test_types(self, raw_text: str) -> list[TestType]:
         lowered = raw_text.lower()
@@ -397,39 +354,24 @@ class RequestUnderstandingService:
 
         if re.search(r"\bpositive\b|\bhop le\b|\bvalid\b", lowered, flags=re.IGNORECASE):
             tokens.append(TestType.POSITIVE)
-
-        if re.search(
-            r"\bunauthorized\b|\bforbidden\b|\b401\b|\b403\b|\bkhong co quyen\b",
-            lowered,
-            flags=re.IGNORECASE,
-        ):
+        if re.search(r"\bunauthorized\b|\bforbidden\b|\b401\b|\b403\b", lowered, flags=re.IGNORECASE):
             tokens.append(TestType.UNAUTHORIZED)
-
-        if re.search(
-            r"\bnot found\b|\b404\b|\bkhong ton tai\b",
-            lowered,
-            flags=re.IGNORECASE,
-        ):
+        if re.search(r"\bnot found\b|\b404\b", lowered, flags=re.IGNORECASE):
             tokens.append(TestType.NOT_FOUND)
-
-        if re.search(
-            r"\bmissing\b|\bomit\b|\bwithout\b|\bthieu\b",
-            lowered,
-            flags=re.IGNORECASE,
-        ):
+        if re.search(r"\bmissing\b|\bomit\b|\bwithout\b|\bthieu\b", lowered, flags=re.IGNORECASE):
             tokens.append(TestType.MISSING_REQUIRED)
-
-        if re.search(
-            r"\binvalid\b|\bwrong type\b|\bwrong format\b|\bsai kieu\b|\bsai dinh dang\b",
-            lowered,
-            flags=re.IGNORECASE,
-        ):
+        if re.search(r"\binvalid\b|\bwrong type\b|\bwrong format\b", lowered, flags=re.IGNORECASE):
             tokens.append(TestType.INVALID_TYPE_OR_FORMAT)
 
         if tokens:
-            return list(dict.fromkeys(tokens))
+            seen: set[str] = set()
+            unique: list[TestType] = []
+            for item in tokens:
+                if item.value not in seen:
+                    seen.add(item.value)
+                    unique.append(item)
+            return unique
 
-        # mặc định nếu user không nói gì thêm: chạy cả positive lẫn nhóm negative cơ bản
         return [
             TestType.POSITIVE,
             TestType.MISSING_REQUIRED,
@@ -450,7 +392,6 @@ class RequestUnderstandingService:
             match = re.search(pattern, raw_text, flags=re.IGNORECASE)
             if match:
                 return max(1, min(int(match.group(1)), 200))
-
         return None
 
     def _extract_ignore_fields(self, raw_text: str) -> list[str]:
@@ -466,7 +407,13 @@ class RequestUnderstandingService:
             for match in re.finditer(pattern, raw_text, flags=re.IGNORECASE):
                 fields.append(match.group(1))
 
-        return list(dict.fromkeys(fields))
+        unique: list[str] = []
+        seen: set[str] = set()
+        for field in fields:
+            if field not in seen:
+                seen.add(field)
+                unique.append(field)
+        return unique
 
     def _coerce_http_method(self, raw_value: Any) -> HttpMethod | None:
         if raw_value is None:
@@ -476,31 +423,24 @@ class RequestUnderstandingService:
         for method in HttpMethod:
             if method.value.upper() == text or method.name.upper() == text:
                 return method
-
         return None
 
-    def _inject_or_replace_target(self, canonical_command: str, forced_target_name: str) -> str:
-        text = canonical_command.strip()
+    def _unique_operations(self, operations: list[dict]) -> list[dict]:
+        unique: list[dict] = []
+        seen: set[tuple[str, str, str]] = set()
 
-        if re.search(r"\btarget\s+[a-zA-Z0-9_-]+\b", text, flags=re.IGNORECASE):
-            return re.sub(
-                r"\btarget\s+[a-zA-Z0-9_-]+\b",
-                f"target {forced_target_name}",
-                text,
-                flags=re.IGNORECASE,
-                count=1,
+        for item in operations:
+            key = (
+                str(item.get("operation_id", "")),
+                str(item.get("path", "")),
+                str(item.get("method", "")),
             )
-
-        if text.lower().startswith("test "):
-            return f"test target {forced_target_name} {text[5:].strip()}"
-
-        return f"test target {forced_target_name} {text}"
+            if key not in seen:
+                seen.add(key)
+                unique.append(item)
+        return unique
 
     def _looks_like_canonical_command(self, text: str) -> bool:
         return bool(
-            re.match(
-                r"^\s*test\s+target\s+[a-zA-Z0-9_-]+",
-                text,
-                flags=re.IGNORECASE,
-            )
+            re.match(r"^\s*test\s+target\s+[a-zA-Z0-9_-]+", text, flags=re.IGNORECASE)
         )

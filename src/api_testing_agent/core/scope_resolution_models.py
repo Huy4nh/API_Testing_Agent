@@ -8,35 +8,30 @@ from pydantic import BaseModel, Field
 class ScopeResolutionDecision(BaseModel):
     scope_mode: Literal["all", "specific", "invalid_function"] = Field(
         description=(
-            "Cách hiểu phạm vi test sau khi target đã rõ. "
-            "'all' nghĩa là user không chỉ rõ chức năng cụ thể. "
-            "'specific' nghĩa là user đã chỉ rõ một chức năng/path/module cụ thể. "
-            "'invalid_function' nghĩa là user có nói chức năng nhưng không map được vào OpenAPI hints."
+            "all: user không chỉ rõ chức năng cụ thể\n"
+            "specific: user chỉ rõ chức năng hợp lệ\n"
+            "invalid_function: user có chỉ chức năng nhưng không map được"
         )
     )
 
-    matched_operation_id: str | None = Field(
-        default=None,
-        description="operation_id đã match được nếu scope_mode='specific'",
+    matched_operation_ids: list[str] = Field(
+        default_factory=list,
+        description="Danh sách operation_id match được nếu specific",
     )
-    matched_path: str | None = Field(
-        default=None,
-        description="path đã match được nếu scope_mode='specific'",
+    matched_paths: list[str] = Field(
+        default_factory=list,
+        description="Danh sách path match được nếu specific",
     )
-    matched_method: str | None = Field(
-        default=None,
-        description="HTTP method đã match được nếu scope_mode='specific'",
-    )
-    matched_tag: str | None = Field(
-        default=None,
-        description="tag/module đã match được nếu scope_mode='specific'",
+    matched_tags: list[str] = Field(
+        default_factory=list,
+        description="Danh sách tags/modules match được nếu specific",
     )
 
     invalid_requested_function: str | None = Field(
         default=None,
-        description="Phần chức năng user yêu cầu nhưng không tồn tại, dùng khi scope_mode='invalid_function'",
+        description="Tên chức năng user nói nhưng không map được",
     )
 
     reason: str = Field(
-        description="Giải thích ngắn gọn tại sao agent đưa ra quyết định này"
+        description="Giải thích ngắn vì sao hệ thống hiểu scope như vậy"
     )

@@ -15,6 +15,7 @@ class TestcaseReviewState(TypedDict, total=False):
     thread_id: str
     user_request_text: str
     canonical_command: str
+    understanding_explanation: str
     target_name: str
     plan: dict[str, Any]
 
@@ -50,6 +51,7 @@ def build_testcase_review_graph(
         current_operation_contexts = list(state.get("operation_contexts", []))
         all_operation_contexts = list(state.get("all_operation_contexts", current_operation_contexts))
         scope_note = state.get("scope_note")
+        canonical_command = state.get("canonical_command", "")
 
         if feedback_scope_refiner is not None:
             refined_scope = feedback_scope_refiner.refine(
@@ -61,24 +63,32 @@ def build_testcase_review_graph(
             current_operation_contexts = refined_scope.operation_contexts
             scope_note = refined_scope.scope_note
 
+        # Đồng bộ canonical command theo scope hiện tại
+        canonical_command = _build_canonical_command_from_scope(
+            target_name=state["target_name"],
+            operation_contexts=current_operation_contexts,
+            plan=state["plan"],
+        )
+
         draft_groups: list[dict[str, Any]] = []
 
         for operation_ctx in current_operation_contexts:
             context = {
                 "target_name": state["target_name"],
                 "original_user_text": state["user_request_text"],
-                "canonical_command": state["canonical_command"],
+                "canonical_command": canonical_command,
+                "understanding_explanation": state.get("understanding_explanation"),
                 "operation": operation_ctx,
                 "plan": state["plan"],
                 "feedback_history": state.get("feedback_history", []),
+                "scope_note": scope_note,
                 "rules": [
                     "Sinh testcase bám đúng phạm vi operation hiện tại.",
                     "Không được bịa endpoint mới.",
-                    "Không được đưa token thật vào Authorization header.",
-                    "Runtime system sẽ tự thêm bearer token nếu cần cho mọi case trừ unauthorized.",
+                    "Nếu feedback đã đổi scope thì chỉ sinh testcase cho scope mới.",
                     "Unauthorized case chỉ hợp lệ nếu operation cần auth.",
                     "Not found case chỉ hợp lý nếu có path parameter đại diện resource identifier.",
-                    "Nếu một test type không phù hợp thì trả skip=true.",
+                    "Nếu test type không phù hợp thì trả skip=true.",
                 ],
             }
 
@@ -100,7 +110,8 @@ def build_testcase_review_graph(
             target_name=state["target_name"],
             round_number=round_no,
             original_user_text=state["user_request_text"],
-            canonical_command=state["canonical_command"],
+            canonical_command=canonical_command,
+            understanding_explanation=state.get("understanding_explanation"),
             draft_groups=draft_groups,
             feedback_history=list(state.get("feedback_history", [])),
             plan=state["plan"],
@@ -109,6 +120,7 @@ def build_testcase_review_graph(
         )
 
         return {
+            "canonical_command": canonical_command,
             "operation_contexts": current_operation_contexts,
             "draft_groups": draft_groups,
             "draft_preview": report.preview_text,
@@ -125,6 +137,7 @@ def build_testcase_review_graph(
                 "round": state.get("review_round", 0),
                 "original_user_text": state.get("user_request_text", ""),
                 "canonical_command": state.get("canonical_command", ""),
+                "understanding_explanation": state.get("understanding_explanation"),
                 "scope_note": state.get("scope_note"),
                 "preview": state.get("draft_preview", ""),
                 "draft_groups": state.get("draft_groups", []),
@@ -158,7 +171,6 @@ def build_testcase_review_graph(
 
     def route_after_review(state: TestcaseReviewState) -> str:
         action = str(state.get("review_action", "revise")).strip().lower()
-
         if action == "approve":
             return "mark_approved"
         if action == "cancel":
@@ -186,3 +198,72 @@ def build_testcase_review_graph(
     builder.add_edge("mark_cancelled", END)
 
     return builder.compile(checkpointer=checkpointer)
+
+
+def _build_canonical_command_from_scope(
+    *,
+    target_name: str,
+    operation_contexts: list[dict],
+    plan: dict[str, Any],
+) -> str:
+    parts: list[str] = ["test", "target", target_name]
+
+    # Nếu scope hiện tại có operation cụ thể thì đưa path + method vào canonical command
+    # để phản ánh đúng phạm vi đang test.
+    seen_path_method: set[tuple[str, str]] = set()
+    for operation in operation_contexts:
+        path = str(operation.get("path", "")).strip()
+        method = str(operation.get("method", "")).strip().upper()
+
+        if not path or not method:
+            continue
+
+        key = (path, method)
+        if key in seen_path_method:
+            continue
+
+        seen_path_method.add(key)
+        parts.append(path)
+        parts.append(method)
+
+    # Giữ nguyên test types hiện tại
+    test_types = list(plan.get("test_types", []))
+    parts.extend(_build_test_type_tokens(test_types))
+
+    # Giữ nguyên ignore fields
+    ignore_fields = list(plan.get("ignore_fields", []))
+    for field_name in ignore_fields:
+        parts.extend(["ignore", "field", str(field_name)])
+
+    return " ".join(parts).strip()
+
+
+def _build_test_type_tokens(test_types: list[str]) -> list[str]:
+    values = {str(item) for item in test_types}
+
+    negative_values = {
+        "missing_required",
+        "invalid_type_or_format",
+        "unauthorized",
+        "not_found",
+    }
+
+    if values == negative_values:
+        return ["negative"]
+
+    if values == {"positive"}:
+        return ["positive"]
+
+    tokens: list[str] = []
+    if "positive" in values:
+        tokens.append("positive")
+    if "unauthorized" in values:
+        tokens.append("unauthorized")
+    if "not_found" in values:
+        tokens.append("not_found")
+    if "missing_required" in values:
+        tokens.append("missing")
+    if "invalid_type_or_format" in values:
+        tokens.append("invalid")
+
+    return tokens

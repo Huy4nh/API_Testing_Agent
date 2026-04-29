@@ -29,6 +29,7 @@ class TestcaseDraftReporter:
         round_number: int,
         original_user_text: str,
         canonical_command: str,
+        understanding_explanation: str | None,
         draft_groups: list[dict[str, Any]],
         feedback_history: list[str],
         plan: dict[str, Any],
@@ -39,9 +40,11 @@ class TestcaseDraftReporter:
             round_number=round_number,
             original_user_text=original_user_text,
             canonical_command=canonical_command,
+            understanding_explanation=understanding_explanation,
             draft_groups=draft_groups,
             feedback_history=feedback_history,
             scope_note=scope_note,
+            operation_contexts=operation_contexts,
         )
 
         thread_dir = self._root_dir / target_name / thread_id
@@ -57,6 +60,7 @@ class TestcaseDraftReporter:
             "round_number": round_number,
             "original_user_text": original_user_text,
             "canonical_command": canonical_command,
+            "understanding_explanation": understanding_explanation,
             "feedback_history": feedback_history,
             "scope_note": scope_note,
             "plan": plan,
@@ -76,10 +80,12 @@ class TestcaseDraftReporter:
                 round_number=round_number,
                 original_user_text=original_user_text,
                 canonical_command=canonical_command,
+                understanding_explanation=understanding_explanation,
                 draft_groups=draft_groups,
                 feedback_history=feedback_history,
                 plan=plan,
                 scope_note=scope_note,
+                operation_contexts=operation_contexts,
             ),
             encoding="utf-8",
         )
@@ -99,17 +105,25 @@ class TestcaseDraftReporter:
         round_number: int,
         original_user_text: str,
         canonical_command: str,
+        understanding_explanation: str | None,
         draft_groups: list[dict[str, Any]],
         feedback_history: list[str],
         scope_note: str | None = None,
+        operation_contexts: list[dict[str, Any]] | None = None,
     ) -> str:
         lines: list[str] = []
         lines.append(f"Review round: {round_number}")
         lines.append(f"Original request: {original_user_text}")
         lines.append(f"Canonical command: {canonical_command}")
 
+        if understanding_explanation:
+            lines.append(f"Understanding: {understanding_explanation}")
+
         if scope_note:
             lines.append(f"Scope note: {scope_note}")
+
+        if operation_contexts is not None:
+            lines.append(f"Active operations: {self._describe_active_operations(operation_contexts)}")
 
         lines.append("")
 
@@ -159,7 +173,7 @@ class TestcaseDraftReporter:
 
             lines.append("")
 
-        lines.append("Approve/revise/cancel sẽ được xử lý ở bước review, chưa execute thật.")
+        # lines.append("Approve/revise/cancel sẽ được xử lý ở bước review, chưa execute thật.")
         return "\n".join(lines)
 
     def _build_markdown(
@@ -170,10 +184,12 @@ class TestcaseDraftReporter:
         round_number: int,
         original_user_text: str,
         canonical_command: str,
+        understanding_explanation: str | None,
         draft_groups: list[dict[str, Any]],
         feedback_history: list[str],
         plan: dict[str, Any],
         scope_note: str | None = None,
+        operation_contexts: list[dict[str, Any]] | None = None,
     ) -> str:
         lines: list[str] = []
         lines.append("# Testcase Draft Report")
@@ -183,8 +199,12 @@ class TestcaseDraftReporter:
         lines.append(f"- Review round: `{round_number}`")
         lines.append(f"- Original request: `{original_user_text}`")
         lines.append(f"- Canonical command: `{canonical_command}`")
+        if understanding_explanation:
+            lines.append(f"- Understanding: {understanding_explanation}")
         if scope_note:
             lines.append(f"- Scope note: {scope_note}")
+        if operation_contexts is not None:
+            lines.append(f"- Active operations: {self._describe_active_operations(operation_contexts)}")
         lines.append(f"- Requested test types: `{plan.get('test_types', [])}`")
         lines.append(f"- Ignore fields: `{plan.get('ignore_fields', [])}`")
         lines.append("")
@@ -237,3 +257,20 @@ class TestcaseDraftReporter:
                 lines.append("")
 
         return "\n".join(lines)
+
+    def _describe_active_operations(self, operation_contexts: list[dict[str, Any]]) -> str:
+        labels: list[str] = []
+        seen: set[tuple[str, str]] = set()
+
+        for item in operation_contexts:
+            method = str(item.get("method", "")).upper()
+            path = str(item.get("path", ""))
+            key = (method, path)
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            labels.append(f"{method} {path}")
+
+        return ", ".join(labels) if labels else "(none)"

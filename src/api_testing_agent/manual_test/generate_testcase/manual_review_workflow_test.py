@@ -9,7 +9,6 @@ from api_testing_agent.tasks.orchestrator import TestOrchestrator
 def main() -> None:
     settings = Settings()
     orchestrator = TestOrchestrator(settings)
-    orchestrator.set_generator_mode("ai")
 
     request_text = input("Nhập lệnh test: ").strip()
     if not request_text:
@@ -32,6 +31,9 @@ def main() -> None:
 
         if result.canonical_command:
             print(f"CANONICAL COMMAND: {result.canonical_command}")
+
+        if result.understanding_explanation:
+            print(f"UNDERSTANDING: {result.understanding_explanation}")
 
         if result.candidate_targets:
             print("CANDIDATE TARGETS:")
@@ -58,9 +60,7 @@ def main() -> None:
             print(result.preview_text)
 
         if result.status == "pending_target_selection":
-            selection = input(
-                "\nNhập lựa chọn target [số thứ tự / tên target / cancel]: "
-            ).strip()
+            selection = input("\nNhập lựa chọn target [số thứ tự / tên target / cancel]: ").strip()
             result = orchestrator.resume_target_selection(
                 thread_id,
                 selection=selection,
@@ -96,8 +96,6 @@ def main() -> None:
 
         if result.status == "approved":
             print("\nReview approved.")
-            print("Current branch stops here intentionally.")
-            print("No execution / validation / result report is run in this step.")
             break
 
         if result.status == "cancelled":

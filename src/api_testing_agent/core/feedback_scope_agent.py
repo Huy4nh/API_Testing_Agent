@@ -8,33 +8,29 @@ from api_testing_agent.core.feedback_scope_models import FeedbackScopeDecision
 
 class FeedbackScopeAgent:
     """
-    Agent chuyên dùng để hiểu feedback của user trong vòng review testcase.
-
-    Khác với ScopeResolutionAgent:
-    - ScopeResolutionAgent: hiểu phạm vi từ request ban đầu
-    - FeedbackScopeAgent: hiểu feedback để sửa phạm vi hiện tại
+    AI-first feedback resolver.
+    Dùng để hiểu feedback trong vòng review testcase.
     """
 
     def __init__(self, model_name: str = "openai:gpt-5.2") -> None:
         self._model_name = ""
         self._agent = None
         self._system_prompt = (
-            "Bạn là trợ lý chỉnh sửa phạm vi test API dựa trên feedback của người dùng trong vòng review testcase.\n"
+            "Bạn là trợ lý chỉnh sửa phạm vi test API dựa trên feedback của user trong vòng review testcase.\n"
+            "Bạn phải quyết định feedback này muốn:\n"
+            "- keep\n"
+            "- reset_all\n"
+            "- replace_with_specific\n"
+            "- add_specific\n"
+            "- remove_specific\n"
+            "- invalid_feedback\n"
             "\n"
-            "Nhiệm vụ của bạn là xác định feedback này muốn:\n"
-            "- giữ nguyên scope hiện tại\n"
-            "- quay về test toàn bộ\n"
-            "- thay scope hiện tại bằng một scope cụ thể mới\n"
-            "- thêm scope mới vào scope hiện tại\n"
-            "- bỏ bớt một phần scope khỏi scope hiện tại\n"
-            "\n"
-            "Luật rất quan trọng:\n"
-            "1. Nếu user nói kiểu 'chỉ test ...' => thường là replace_with_specific.\n"
-            "2. Nếu user nói kiểu 'thêm ... nữa' => thường là add_specific.\n"
-            "3. Nếu user nói kiểu 'bỏ ... đi', 'loại ... ra' => thường là remove_specific.\n"
-            "4. Nếu user nói kiểu 'quay lại test toàn bộ', 'test hết lại' => reset_all.\n"
-            "5. Không được bịa operation/path/tag ngoài danh sách operation hints được cung cấp.\n"
-            "6. Nếu feedback không map được vào operation/path/tag nào thì trả invalid_feedback.\n"
+            "Luật:\n"
+            "1. 'chỉ test ...' thường là replace_with_specific.\n"
+            "2. 'thêm ... nữa' thường là add_specific.\n"
+            "3. 'bỏ ... đi', 'loại ... ra' thường là remove_specific.\n"
+            "4. 'test lại toàn bộ', 'quay lại test hết' là reset_all.\n"
+            "5. Không được bịa operation/path/tag ngoài operation hints được cung cấp.\n"
         )
         self.set_model_name(model_name)
 
@@ -42,10 +38,8 @@ class FeedbackScopeAgent:
         cleaned = model_name.strip()
         if not cleaned:
             raise ValueError("Model name must not be empty.")
-
         self._model_name = cleaned
         model = init_chat_model(cleaned)
-
         self._agent = create_agent(
             model=model,
             tools=[],
@@ -69,18 +63,15 @@ class FeedbackScopeAgent:
         result = self._agent.invoke(
             {
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": self._system_prompt,
-                    },
+                    {"role": "system", "content": self._system_prompt},
                     {
                         "role": "user",
                         "content": (
-                            f"Target hiện tại: {target_name}\n\n"
-                            f"Feedback mới nhất của user:\n{feedback_text}\n\n"
-                            f"Toàn bộ operation hints của target:\n{all_operation_hints}\n\n"
-                            f"Scope hiện tại đang được test:\n{current_scope_hints}\n\n"
-                            "Hãy trả ra action_mode đúng với feedback này."
+                            f"Target: {target_name}\n\n"
+                            f"Feedback mới nhất:\n{feedback_text}\n\n"
+                            f"All operation hints:\n{all_operation_hints}\n\n"
+                            f"Current scope hints:\n{current_scope_hints}\n\n"
+                            "Hãy quyết định action_mode phù hợp."
                         ),
                     },
                 ]
@@ -90,5 +81,4 @@ class FeedbackScopeAgent:
         structured = result.get("structured_response")
         if structured is None:
             raise ValueError("FeedbackScopeAgent did not return structured_response.")
-
         return structured
