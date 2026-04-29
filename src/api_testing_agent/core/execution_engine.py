@@ -13,6 +13,9 @@ from api_testing_agent.core.execution_models import (
     RuntimeRequest,
 )
 from api_testing_agent.core.request_runtime_builder import RequestRuntimeBuilder
+from api_testing_agent.core.unknown_output_description_service import (
+    UnknownOutputDescriptionService,
+)
 
 
 class ExecutionEngine:
@@ -23,11 +26,13 @@ class ExecutionEngine:
         runtime_builder: RequestRuntimeBuilder | None = None,
         log_formatter: ExecutionLogFormatter | None = None,
         transport: httpx.BaseTransport | None = None,
+        unknown_output_description_service: UnknownOutputDescriptionService | None = None,
     ) -> None:
         self._timeout_seconds = timeout_seconds
         self._runtime_builder = runtime_builder or RequestRuntimeBuilder()
         self._log_formatter = log_formatter or ExecutionLogFormatter()
         self._transport = transport
+        self._unknown_output_description_service = unknown_output_description_service
 
     def execute_approved_draft(
         self,
@@ -100,11 +105,7 @@ class ExecutionEngine:
 
             elapsed_ms = (time.perf_counter() - started) * 1000
 
-            parsed_json: Any | None = None
-            try:
-                parsed_json = response.json()
-            except Exception:
-                parsed_json = None
+            response_json, response_text = self._extract_response_payload(response)
 
             return ExecutionCaseResult(
                 testcase_id=runtime_request.testcase_id,
@@ -120,8 +121,8 @@ class ExecutionEngine:
                 expected_statuses=runtime_request.expected_statuses,
                 actual_status=response.status_code,
                 response_headers=dict(response.headers),
-                response_text=response.text,
-                response_json=parsed_json,
+                response_text=response_text,
+                response_json=response_json,
                 response_time_ms=elapsed_ms,
                 network_error=None,
                 executed_at=executed_at,
@@ -156,6 +157,144 @@ class ExecutionEngine:
                 skip=False,
                 skip_reason=None,
             )
+
+    def _extract_response_payload(
+        self,
+        response: httpx.Response,
+    ) -> tuple[Any | None, str | None]:
+        response_headers = dict(response.headers)
+        content_type = str(response_headers.get("content-type", "")).lower().strip()
+        raw_bytes = response.content
+        status_code = response.status_code
+
+        if self._looks_like_json_content_type(content_type):
+            try:
+                return response.json(), None
+            except Exception:
+                return None, self._safe_decode_text(raw_bytes)
+
+        if self._looks_like_known_binary_content_type(content_type) or self._looks_like_known_binary_bytes(raw_bytes):
+            return None, self._binary_summary(
+                content_type=content_type,
+                raw_bytes=raw_bytes,
+            )
+
+        if self._looks_like_known_text_content_type(content_type):
+            return None, self._safe_decode_text(raw_bytes)
+
+        # Đây là nhánh mới:
+        # - response có body
+        # - status thành công
+        # - không phải JSON
+        # - không phải binary quen thuộc
+        # - không phải text quen thuộc
+        # => nhờ AI mô tả đại khái
+        if 200 <= status_code < 300 and raw_bytes:
+            if self._unknown_output_description_service is not None:
+                ai_summary = self._unknown_output_description_service.describe(
+                    status_code=status_code,
+                    headers=response_headers,
+                    raw_bytes=raw_bytes,
+                )
+                return None, ai_summary
+
+        # fallback cuối cùng
+        return None, self._safe_decode_text(raw_bytes)
+
+    def _looks_like_json_content_type(self, content_type: str) -> bool:
+        if not content_type:
+            return False
+
+        return (
+            "application/json" in content_type
+            or content_type.endswith("+json")
+        )
+
+    def _looks_like_known_text_content_type(self, content_type: str) -> bool:
+        if not content_type:
+            return False
+
+        if content_type.startswith("text/"):
+            return True
+
+        known_text_like = (
+            "application/xml",
+            "text/xml",
+            "application/javascript",
+            "application/x-www-form-urlencoded",
+            "application/graphql",
+            "application/yaml",
+            "application/x-yaml",
+        )
+
+        for item in known_text_like:
+            if item in content_type:
+                return True
+
+        return False
+
+    def _looks_like_known_binary_content_type(self, content_type: str) -> bool:
+        if not content_type:
+            return False
+
+        binary_prefixes = (
+            "image/",
+            "audio/",
+            "video/",
+            "font/",
+        )
+
+        binary_exact_or_contains = (
+            "application/octet-stream",
+            "application/pdf",
+            "application/zip",
+            "application/x-zip-compressed",
+            "application/vnd",
+            "multipart/",
+        )
+
+        if content_type.startswith(binary_prefixes):
+            return True
+
+        for item in binary_exact_or_contains:
+            if item in content_type:
+                return True
+
+        return False
+
+    def _looks_like_known_binary_bytes(self, raw_bytes: bytes) -> bool:
+        if not raw_bytes:
+            return False
+
+        if raw_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+            return True
+
+        if raw_bytes.startswith(b"\xff\xd8\xff"):
+            return True
+
+        if raw_bytes.startswith((b"GIF87a", b"GIF89a")):
+            return True
+
+        if raw_bytes.startswith(b"%PDF"):
+            return True
+
+        if b"\x00" in raw_bytes[:1024]:
+            return True
+
+        return False
+
+    def _binary_summary(self, *, content_type: str, raw_bytes: bytes) -> str:
+        safe_type = content_type or "unknown"
+        return f"<binary response omitted: content_type={safe_type}, size_bytes={len(raw_bytes)}>"
+
+    def _safe_decode_text(self, raw_bytes: bytes) -> str:
+        if not raw_bytes:
+            return ""
+
+        try:
+            return raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            return raw_bytes.decode("utf-8", errors="replace")
 
     def _build_skipped_result(self, runtime_request: RuntimeRequest) -> ExecutionCaseResult:
         return ExecutionCaseResult(

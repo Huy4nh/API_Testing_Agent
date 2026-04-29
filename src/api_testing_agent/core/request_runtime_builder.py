@@ -27,6 +27,9 @@ class RequestRuntimeBuilder:
         )
         logical_case_name = str(case.get("description") or f"case_{case_index}")
 
+        skip = bool(case.get("skip", False))
+        skip_reason = str(case.get("skip_reason", "")).strip() or None
+
         explicit_path_params = case.get("path_params")
         explicit_query_params = case.get("query_params")
         explicit_json_body = case.get("json_body")
@@ -36,15 +39,27 @@ class RequestRuntimeBuilder:
             case=case,
             explicit_path_params=explicit_path_params,
         )
-        query_params = self._build_query_params(
-            operation_context=operation_context,
-            explicit_query_params=explicit_query_params,
-        )
-        json_body = self._build_json_body(
-            operation_context=operation_context,
-            case=case,
-            explicit_json_body=explicit_json_body,
-        )
+
+        # Nếu case là skip:
+        # - không synthesize query/body nữa
+        # - chỉ giữ explicit values nếu AI draft đã đưa sẵn
+        if skip:
+            query_params = (
+                copy.deepcopy(explicit_query_params)
+                if isinstance(explicit_query_params, dict)
+                else {}
+            )
+            json_body = copy.deepcopy(explicit_json_body) if explicit_json_body is not None else None
+        else:
+            query_params = self._build_query_params(
+                operation_context=operation_context,
+                explicit_query_params=explicit_query_params,
+            )
+            json_body = self._build_json_body(
+                operation_context=operation_context,
+                case=case,
+                explicit_json_body=explicit_json_body,
+            )
 
         headers = self._auth_header_builder.build(
             target=target,
@@ -60,9 +75,6 @@ class RequestRuntimeBuilder:
 
         expected_statuses = self._normalize_expected_statuses(case.get("expected_status_codes"))
         test_type = str(case.get("test_type", "")).strip().lower()
-
-        skip = bool(case.get("skip", False))
-        skip_reason = str(case.get("skip_reason", "")).strip() or None
 
         return RuntimeRequest(
             testcase_id=testcase_id,

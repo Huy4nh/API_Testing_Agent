@@ -11,6 +11,9 @@ from api_testing_agent.config import Settings
 from api_testing_agent.core.execution_engine import ExecutionEngine
 from api_testing_agent.core.execution_log_formatter import ExecutionLogFormatter
 from api_testing_agent.core.execution_models import ExecutionBatchResult, ExecutionCaseResult
+from api_testing_agent.core.unknown_output_description_service import (
+    UnknownOutputDescriptionService,
+)
 from api_testing_agent.tasks.orchestrator import ReviewWorkflowResult, TestOrchestrator
 
 
@@ -20,7 +23,15 @@ DIVIDER = "=" * 100
 def main() -> None:
     settings = Settings()
     orchestrator = TestOrchestrator(settings)
-    execution_engine = ExecutionEngine(timeout_seconds=settings.http_timeout_seconds)
+
+    unknown_output_description_service = UnknownOutputDescriptionService(
+        model_name=settings.langchain_model_name,
+    )
+
+    execution_engine = ExecutionEngine(
+        timeout_seconds=settings.http_timeout_seconds,
+        unknown_output_description_service=unknown_output_description_service,
+    )
     log_formatter = ExecutionLogFormatter()
 
     thread_id = _generate_thread_id()
@@ -162,8 +173,6 @@ def _normalize_review_input(raw_action: str) -> tuple[str, str]:
     if lowered in {"feedback", "revise"}:
         return "revise", ""
 
-    # Giống behavior CLI cũ: nếu user không gõ đúng keyword,
-    # coi nội dung đó là feedback luôn.
     return "revise", cleaned
 
 
@@ -203,20 +212,11 @@ def _print_review_result(result: ReviewWorkflowResult) -> None:
     if result.selection_question:
         print(f"TARGET QUESTION: {result.selection_question}")
 
-    if result.canonical_command:
-        print(f"CANONICAL COMMAND: {result.canonical_command}")
-
-    if result.understanding_explanation:
-        print(f"UNDERSTANDING: {result.understanding_explanation}")
-
     if result.draft_report_json_path:
         print(f"DRAFT JSON REPORT: {result.draft_report_json_path}")
 
     if result.draft_report_md_path:
         print(f"DRAFT MD REPORT: {result.draft_report_md_path}")
-
-    if result.round_number:
-        print(f"Review round: {result.round_number}")
 
     if result.available_functions:
         print("AVAILABLE FUNCTIONS:")
@@ -227,7 +227,52 @@ def _print_review_result(result: ReviewWorkflowResult) -> None:
         print(f"MESSAGE: {result.message}")
 
     if result.preview_text:
-        print(result.preview_text)
+        cleaned_preview = _strip_duplicate_preview_header(result.preview_text)
+        if cleaned_preview:
+            print(cleaned_preview)
+    else:
+        if result.round_number:
+            print(f"Review round: {result.round_number}")
+
+        if result.canonical_command:
+            print(f"CANONICAL COMMAND: {result.canonical_command}")
+
+        if result.understanding_explanation:
+            print(f"UNDERSTANDING: {result.understanding_explanation}")
+
+
+def _strip_duplicate_preview_header(preview_text: str) -> str:
+    """
+    Preview của TestcaseDraftReporter đã chứa sẵn:
+    - Review round
+    - Original request
+    - Canonical command
+    - Understanding
+    - Scope note
+    - Active operations
+
+    Trong CLI, ta đã in một phần metadata ở phía trên rồi.
+    Hàm này loại bớt các dòng đầu bị trùng để console gọn hơn.
+    """
+    duplicated_prefixes = (
+        "Review round:",
+        "Original request:",
+        "Canonical command:",
+        "Understanding:",
+        "Scope note:",
+        "Active operations:",
+    )
+
+    cleaned_lines: list[str] = []
+    for line in preview_text.splitlines():
+        if line.startswith(duplicated_prefixes):
+            continue
+        cleaned_lines.append(line)
+
+    while cleaned_lines and not cleaned_lines[0].strip():
+        cleaned_lines.pop(0)
+
+    return "\n".join(cleaned_lines).rstrip()
 
 
 def _print_execution_batch_result(
