@@ -1,200 +1,620 @@
 from __future__ import annotations
 
-import argparse
-import json
-import logging
-from datetime import datetime, timezone
-from pathlib import Path
+import traceback
+import uuid
 from typing import Any
 
-from api_testing_agent.core.validation_models import ValidationBatchResult
+from api_testing_agent.config import Settings
+from api_testing_agent.core.execution_engine import ExecutionEngine
+from api_testing_agent.core.execution_log_formatter import ExecutionLogFormatter
+from api_testing_agent.core.execution_models import ExecutionBatchResult, ExecutionCaseResult
+from api_testing_agent.core.reporter.validation.validation_reporter import ValidationReporter
+from api_testing_agent.core.unknown_output_description_service import (
+    UnknownOutputDescriptionService,
+)
+from api_testing_agent.core.validation_models import (
+    ValidationBatchResult,
+    ValidationCaseResult,
+)
 from api_testing_agent.core.validator import Validator
-
-try:
-    from api_testing_agent.logging_config import bind_logger as _project_bind_logger
-    from api_testing_agent.logging_config import get_logger as _project_get_logger
-except Exception:  # pragma: no cover
-    _project_bind_logger = None
-    _project_get_logger = None
+from api_testing_agent.logging_config import bind_logger, get_logger, setup_logging
+from api_testing_agent.tasks.orchestrator import ReviewWorkflowResult, TestOrchestrator
 
 
-def get_logger(name: str) -> Any:
-    if _project_get_logger is not None:
-        return _project_get_logger(name)
-    return logging.getLogger(name)
-
-
-def bind_logger(logger: Any, **context: Any) -> Any:
-    if _project_bind_logger is not None:
-        return _project_bind_logger(logger, **context)
-    return logger
-
-
-LOGGER = get_logger(__name__)
-
-
-def load_execution_batch_report(path: str | Path) -> dict[str, Any]:
-    report_path = Path(path)
-    logger = bind_logger(LOGGER, report_path=str(report_path))
-    logger.info("Loading execution batch report.")
-
-    if not report_path.exists():
-        raise FileNotFoundError(f"Execution report not found: {report_path}")
-
-    content = json.loads(report_path.read_text(encoding="utf-8"))
-    if not isinstance(content, dict):
-        raise ValueError("Execution report JSON root must be an object.")
-
-    return content
-
-
-def validate_execution_batch_result(execution_batch_result: Any) -> ValidationBatchResult:
-    logger = bind_logger(LOGGER)
-    logger.info("Validating execution batch result.")
-
-    validator = Validator()
-    validation_batch = validator.validate_batch(execution_batch_result)
-
-    logger.info(
-        "Validation batch completed.",
-        extra={
-            "total_cases": validation_batch.total_cases,
-            "pass_cases": validation_batch.pass_cases,
-            "fail_cases": validation_batch.fail_cases,
-            "skip_cases": validation_batch.skip_cases,
-            "error_cases": validation_batch.error_cases,
-        },
-    )
-    return validation_batch
-
-
-def write_validation_json_report(
-    validation_batch_result: ValidationBatchResult,
-    output_dir: str | Path,
-) -> Path:
-    report_dir = Path(output_dir)
-    report_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    thread_part = validation_batch_result.thread_id or "no_thread"
-    file_path = report_dir / f"validation_{timestamp}_{thread_part}.json"
-
-    file_path.write_text(
-        json.dumps(validation_batch_result.to_dict(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    return file_path
-
-
-def write_validation_markdown_report(
-    validation_batch_result: ValidationBatchResult,
-    output_dir: str | Path,
-) -> Path:
-    report_dir = Path(output_dir)
-    report_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    thread_part = validation_batch_result.thread_id or "no_thread"
-    file_path = report_dir / f"validation_{timestamp}_{thread_part}.md"
-
-    lines: list[str] = []
-    lines.append("# Validation Report")
-    lines.append("")
-    lines.append(f"- Generated at: `{validation_batch_result.generated_at}`")
-    lines.append(f"- Thread ID: `{validation_batch_result.thread_id}`")
-    lines.append(f"- Target: `{validation_batch_result.target_name}`")
-    lines.append(f"- Total cases: `{validation_batch_result.total_cases}`")
-    lines.append(f"- Validated cases: `{validation_batch_result.validated_cases}`")
-    lines.append(f"- Pass: `{validation_batch_result.pass_cases}`")
-    lines.append(f"- Fail: `{validation_batch_result.fail_cases}`")
-    lines.append(f"- Skip: `{validation_batch_result.skip_cases}`")
-    lines.append(f"- Error: `{validation_batch_result.error_cases}`")
-    lines.append("")
-
-    for index, case in enumerate(validation_batch_result.results, start=1):
-        lines.append(f"## {index}. {case.method or 'UNKNOWN'} {case.path or ''}".rstrip())
-        lines.append(f"- Testcase ID: `{case.testcase_id}`")
-        lines.append(f"- Logical name: `{case.logical_case_name}`")
-        lines.append(f"- Operation ID: `{case.operation_id}`")
-        lines.append(f"- Test type: `{case.test_type}`")
-        lines.append(f"- Verdict: `{case.verdict.value}`")
-        lines.append(f"- Summary: {case.summary_message}")
-        lines.append(f"- Actual status: `{case.actual_status}`")
-        lines.append(f"- Expected statuses: `{case.expected_statuses}`")
-        lines.append(f"- Status check: `{case.status_check_passed}`")
-        lines.append(f"- Schema check: `{case.schema_check_passed}`")
-        lines.append(f"- Required fields check: `{case.required_fields_check_passed}`")
-        lines.append(f"- Missing required fields: `{case.missing_required_fields}`")
-        lines.append(f"- Final URL: `{case.final_url}`")
-        lines.append(f"- Response time ms: `{case.response_time_ms}`")
-
-        if case.issues:
-            lines.append("- Issues:")
-            for issue in case.issues:
-                lines.append(f"  - [{issue.level}] {issue.code}: {issue.message}")
-
-        lines.append("")
-
-    file_path.write_text("\n".join(lines), encoding="utf-8")
-    return file_path
-
-
-def run_validation_from_execution_report(
-    execution_report_path: str | Path,
-    output_dir: str | Path,
-) -> ValidationBatchResult:
-    logger = bind_logger(
-        LOGGER,
-        execution_report_path=str(execution_report_path),
-        output_dir=str(output_dir),
-    )
-    logger.info("Running validation from execution report file.")
-
-    execution_batch_result = load_execution_batch_report(execution_report_path)
-    validation_batch_result = validate_execution_batch_result(execution_batch_result)
-
-    json_path = write_validation_json_report(validation_batch_result, output_dir)
-    md_path = write_validation_markdown_report(validation_batch_result, output_dir)
-
-    logger.info(
-        "Validation reports generated.",
-        extra={
-            "validation_json_report": str(json_path),
-            "validation_markdown_report": str(md_path),
-        },
-    )
-    return validation_batch_result
+DIVIDER = "=" * 100
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Manual validation workflow test.")
-    parser.add_argument(
-        "--execution-report",
-        required=True,
-        help="Path to execution batch JSON report.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        default="artifacts/validation",
-        help="Directory to write validation reports.",
-    )
-    args = parser.parse_args()
+    setup_logging()
+    base_logger = get_logger(__name__)
 
-    validation_batch_result = run_validation_from_execution_report(
-        execution_report_path=args.execution_report,
-        output_dir=args.output_dir,
+    settings = Settings()
+    orchestrator = TestOrchestrator(settings)
+
+    unknown_output_description_service = UnknownOutputDescriptionService(
+        model_name=settings.langchain_model_name,
+        model_provider=getattr(settings, "langchain_model_provider", None),
     )
 
-    print("=" * 80)
-    print("VALIDATION DONE")
-    print("Thread ID:", validation_batch_result.thread_id)
-    print("Target:", validation_batch_result.target_name)
-    print("Total:", validation_batch_result.total_cases)
-    print("Validated:", validation_batch_result.validated_cases)
-    print("Pass:", validation_batch_result.pass_cases)
-    print("Fail:", validation_batch_result.fail_cases)
-    print("Skip:", validation_batch_result.skip_cases)
-    print("Error:", validation_batch_result.error_cases)
+    execution_engine = ExecutionEngine(
+        timeout_seconds=settings.http_timeout_seconds,
+        unknown_output_description_service=unknown_output_description_service,
+    )
+    execution_log_formatter = ExecutionLogFormatter()
+
+    validator = Validator()
+    validation_reporter = ValidationReporter(output_dir=settings.report_output_dir)
+
+    thread_id = _generate_thread_id()
+    logger = bind_logger(base_logger, thread_id=thread_id)
+    logger.info("Started manual validate workflow.")
+
+    try:
+        raw_text = input("Nhập lệnh test: ").strip()
+        if not raw_text:
+            logger.warning("No input provided. Exiting manual workflow.")
+            print("Không có input. Kết thúc.")
+            return
+
+        logger.info(
+            "Received user input for manual validate workflow.",
+            extra={"payload_source": "manual_input"},
+        )
+
+        result = orchestrator.start_review_from_text(raw_text, thread_id=thread_id)
+
+        while True:
+            _print_review_result(result)
+
+            if result.status in {
+                "target_not_found",
+                "invalid_function",
+                "cancelled",
+            }:
+                logger.info(
+                    f"Workflow ended early with status={result.status}.",
+                    extra={"target_name": result.selected_target or "-"},
+                )
+                return
+
+            if result.status == "pending_target_selection":
+                logger.info(
+                    "Pending target selection.",
+                    extra={"target_name": ",".join(result.candidate_targets or [])},
+                )
+
+                selection = input(
+                    "\nNhập lựa chọn target [số thứ tự / tên target / cancel]: "
+                ).strip()
+
+                logger.info("User submitted target selection.")
+                result = orchestrator.resume_target_selection(
+                    result.thread_id,
+                    selection=selection,
+                )
+                continue
+
+            if result.status == "pending_review":
+                logger.info(
+                    "Pending review for testcase draft.",
+                    extra={"target_name": result.selected_target or "-"},
+                )
+
+                raw_action = input(
+                    "\nNhập action [approve / feedback / cancel]: "
+                ).strip()
+
+                action, feedback = _normalize_review_input(raw_action)
+
+                if action == "approve":
+                    logger.info(
+                        "User approved testcase draft.",
+                        extra={"target_name": result.selected_target or "-"},
+                    )
+
+                    result = orchestrator.resume_review(
+                        result.thread_id,
+                        action="approve",
+                        feedback="",
+                    )
+                    _print_review_result(result)
+
+                    execution_batch_result = _execute_approved_review(
+                        orchestrator=orchestrator,
+                        execution_engine=execution_engine,
+                        thread_id=result.thread_id,
+                        logger=logger,
+                    )
+
+                    execution_report_paths = _write_execution_reports(
+                        settings=settings,
+                        batch_result=execution_batch_result,
+                    )
+
+                    _print_execution_batch_result(
+                        batch_result=execution_batch_result,
+                        log_formatter=execution_log_formatter,
+                        report_paths=execution_report_paths,
+                    )
+
+                    validation_batch_result = validator.validate_batch(execution_batch_result)
+
+                    logger.info(
+                        "Validation batch finished.",
+                        extra={
+                            "target_name": validation_batch_result.target_name or "-",
+                            "payload_source": "validation_batch",
+                            "pass_cases": validation_batch_result.pass_cases,
+                            "fail_cases": validation_batch_result.fail_cases,
+                            "skip_cases": validation_batch_result.skip_cases,
+                            "error_cases": validation_batch_result.error_cases,
+                        },
+                    )
+
+                    validation_report_artifacts = validation_reporter.write_batch_result(
+                        validation_batch_result
+                    )
+
+                    _print_validation_batch_result(
+                        batch_result=validation_batch_result,
+                        report_paths={
+                            "json_path": validation_report_artifacts.json_path,
+                            "md_path": validation_report_artifacts.md_path,
+                        },
+                    )
+                    return
+
+                if action == "cancel":
+                    logger.info(
+                        "User cancelled review.",
+                        extra={"target_name": result.selected_target or "-"},
+                    )
+                    result = orchestrator.resume_review(
+                        result.thread_id,
+                        action="cancel",
+                        feedback="",
+                    )
+                    continue
+
+                if action == "revise":
+                    if not feedback:
+                        feedback = input("Nhập feedback để sinh lại testcase: ").strip()
+
+                    logger.info(
+                        "User requested testcase revision.",
+                        extra={"target_name": result.selected_target or "-"},
+                    )
+
+                    result = orchestrator.resume_review(
+                        result.thread_id,
+                        action="revise",
+                        feedback=feedback,
+                    )
+                    continue
+
+                logger.warning(f"Invalid review action: {raw_action}")
+                print(f"Action không hợp lệ: {raw_action}")
+                continue
+
+            if result.status == "approved":
+                logger.info(
+                    "Workflow reached approved state directly. Starting execution + validation.",
+                    extra={"target_name": result.selected_target or "-"},
+                )
+
+                execution_batch_result = _execute_approved_review(
+                    orchestrator=orchestrator,
+                    execution_engine=execution_engine,
+                    thread_id=result.thread_id,
+                    logger=logger,
+                )
+
+                execution_report_paths = _write_execution_reports(
+                    settings=settings,
+                    batch_result=execution_batch_result,
+                )
+
+                _print_execution_batch_result(
+                    batch_result=execution_batch_result,
+                    log_formatter=execution_log_formatter,
+                    report_paths=execution_report_paths,
+                )
+
+                validation_batch_result = validator.validate_batch(execution_batch_result)
+
+                logger.info(
+                    "Validation batch finished.",
+                    extra={
+                        "target_name": validation_batch_result.target_name or "-",
+                        "payload_source": "validation_batch",
+                        "pass_cases": validation_batch_result.pass_cases,
+                        "fail_cases": validation_batch_result.fail_cases,
+                        "skip_cases": validation_batch_result.skip_cases,
+                        "error_cases": validation_batch_result.error_cases,
+                    },
+                )
+
+                validation_report_artifacts = validation_reporter.write_batch_result(
+                    validation_batch_result
+                )
+
+                _print_validation_batch_result(
+                    batch_result=validation_batch_result,
+                    report_paths={
+                        "json_path": validation_report_artifacts.json_path,
+                        "md_path": validation_report_artifacts.md_path,
+                    },
+                )
+                return
+
+            logger.warning(f"Unhandled workflow status: {result.status}")
+            print(f"Trạng thái chưa xử lý: {result.status}")
+            return
+
+    except KeyboardInterrupt:
+        logger.warning("Manual validate workflow interrupted by user.")
+        print("\nĐã dừng bởi người dùng.")
+    except Exception as exc:
+        logger.exception(f"Manual validate workflow failed with exception: {exc}")
+        print("\nCó lỗi khi chạy workflow validate test.")
+        print(f"Error: {exc}")
+        print("\nChi tiết traceback:")
+        print(traceback.format_exc())
+
+
+def _generate_thread_id() -> str:
+    return f"cli-validate-{uuid.uuid4().hex}"
+
+
+def _normalize_review_input(raw_action: str) -> tuple[str, str]:
+    cleaned = raw_action.strip()
+    lowered = cleaned.lower()
+
+    if lowered == "approve":
+        return "approve", ""
+
+    if lowered == "cancel":
+        return "cancel", ""
+
+    if lowered in {"feedback", "revise"}:
+        return "revise", ""
+
+    return "revise", cleaned
+
+
+def _execute_approved_review(
+    *,
+    orchestrator: TestOrchestrator,
+    execution_engine: ExecutionEngine,
+    thread_id: str,
+    logger: Any,
+) -> ExecutionBatchResult:
+    payload = _get_execution_payload(orchestrator, thread_id)
+
+    batch_result = execution_engine.execute_approved_draft(
+        thread_id=payload["thread_id"],
+        target=payload["target"],
+        target_name=payload["target_name"],
+        operation_contexts=payload["operation_contexts"],
+        draft_groups=payload["draft_groups"],
+    )
+
+    logger.info(
+        "Execution batch finished.",
+        extra={
+            "target_name": batch_result.target_name,
+            "payload_source": "execution_batch",
+        },
+    )
+    return batch_result
+
+
+def _get_execution_payload(
+    orchestrator: TestOrchestrator,
+    thread_id: str,
+) -> dict[str, Any]:
+    if not hasattr(orchestrator, "get_approved_execution_payload"):
+        raise RuntimeError(
+            "TestOrchestrator chưa có method 'get_approved_execution_payload'.\n"
+            "Hãy thêm method này vào orchestrator trước khi chạy manual validate workflow."
+        )
+
+    payload = orchestrator.get_approved_execution_payload(thread_id)
+    if not isinstance(payload, dict):
+        raise RuntimeError("Execution payload trả về không hợp lệ.")
+
+    return payload
+
+
+def _print_review_result(result: ReviewWorkflowResult) -> None:
+    print("\n" + DIVIDER)
+    print(f"STATUS: {result.status}")
+    print(f"THREAD: {result.thread_id}")
+
+    if result.original_user_text:
+        print(f"ORIGINAL REQUEST: {result.original_user_text}")
+
+    if result.selected_target:
+        print(f"SELECTED TARGET: {result.selected_target}")
+
+    if result.candidate_targets:
+        print("CANDIDATE TARGETS:")
+        for index, item in enumerate(result.candidate_targets, start=1):
+            print(f"  {index}. {item}")
+
+    if result.selection_question:
+        print(f"TARGET QUESTION: {result.selection_question}")
+
+    if result.draft_report_json_path:
+        print(f"DRAFT JSON REPORT: {result.draft_report_json_path}")
+
+    if result.draft_report_md_path:
+        print(f"DRAFT MD REPORT: {result.draft_report_md_path}")
+
+    if result.available_functions:
+        print("AVAILABLE FUNCTIONS:")
+        for item in result.available_functions:
+            print(f"  - {item}")
+
+    if result.message:
+        print(f"MESSAGE: {result.message}")
+
+    if result.preview_text:
+        cleaned_preview = _strip_duplicate_preview_header(result.preview_text)
+        if cleaned_preview:
+            print(cleaned_preview)
+    else:
+        if result.round_number:
+            print(f"Review round: {result.round_number}")
+
+        if result.canonical_command:
+            print(f"CANONICAL COMMAND: {result.canonical_command}")
+
+        if result.understanding_explanation:
+            print(f"UNDERSTANDING: {result.understanding_explanation}")
+
+
+def _strip_duplicate_preview_header(preview_text: str) -> str:
+    duplicated_prefixes = (
+        "Review round:",
+        "Original request:",
+        "Canonical command:",
+        "Understanding:",
+        "Scope note:",
+        "Active operations:",
+    )
+
+    cleaned_lines: list[str] = []
+    for line in preview_text.splitlines():
+        if line.startswith(duplicated_prefixes):
+            continue
+        cleaned_lines.append(line)
+
+    while cleaned_lines and not cleaned_lines[0].strip():
+        cleaned_lines.pop(0)
+
+    return "\n".join(cleaned_lines).rstrip()
+
+
+def _print_execution_batch_result(
+    *,
+    batch_result: ExecutionBatchResult,
+    log_formatter: ExecutionLogFormatter,
+    report_paths: dict[str, str],
+) -> None:
+    print("\n" + DIVIDER)
+    print("EXECUTION STATUS: finished")
+    print(f"THREAD: {batch_result.thread_id}")
+    print(f"TARGET: {batch_result.target_name}")
+    print(f"TOTAL CASES: {batch_result.total_cases}")
+    print(f"EXECUTED CASES: {batch_result.executed_cases}")
+    print(f"SKIPPED CASES: {batch_result.skipped_cases}")
+    print(f"EXECUTION JSON REPORT: {report_paths['json_path']}")
+    print(f"EXECUTION MD REPORT: {report_paths['md_path']}")
+
+    for index, case_result in enumerate(batch_result.results, start=1):
+        print("\n" + DIVIDER)
+        print(f"EXECUTION CASE {index}")
+        print(log_formatter.format_case_result(case_result))
+        _print_execution_case_detail(case_result)
+
+
+def _print_execution_case_detail(case_result: ExecutionCaseResult) -> None:
+    print(f"  operation_id: {case_result.operation_id}")
+    print(f"  testcase_id: {case_result.testcase_id}")
+    print(f"  headers: {case_result.final_headers}")
+    print(f"  query_params: {case_result.final_query_params}")
+    print(f"  json_body: {case_result.final_json_body}")
+
+    if case_result.payload_source:
+        print(f"  payload_source: {case_result.payload_source}")
+
+    if case_result.planner_reason:
+        print(f"  planner_reason: {case_result.planner_reason}")
+
+    if case_result.planner_confidence is not None:
+        print(f"  planner_confidence: {case_result.planner_confidence:.2f}")
+
+    if case_result.response_headers:
+        print(f"  response_headers: {case_result.response_headers}")
+
+    if case_result.response_json is not None:
+        print("  response_json:")
+        print(_pretty_json(case_result.response_json))
+    elif case_result.response_text is not None:
+        print("  response_text:")
+        print(case_result.response_text)
+
+
+def _print_validation_batch_result(
+    *,
+    batch_result: ValidationBatchResult,
+    report_paths: dict[str, str],
+) -> None:
+    print("\n" + DIVIDER)
+    print("VALIDATION STATUS: finished")
+    print(f"THREAD: {batch_result.thread_id}")
+    print(f"TARGET: {batch_result.target_name}")
+    print(f"TOTAL CASES: {batch_result.total_cases}")
+    print(f"VALIDATED CASES: {batch_result.validated_cases}")
+    print(f"PASS CASES: {batch_result.pass_cases}")
+    print(f"FAIL CASES: {batch_result.fail_cases}")
+    print(f"SKIP CASES: {batch_result.skip_cases}")
+    print(f"ERROR CASES: {batch_result.error_cases}")
+    print(f"VALIDATION JSON REPORT: {report_paths['json_path']}")
+    print(f"VALIDATION MD REPORT: {report_paths['md_path']}")
+
+    for index, case_result in enumerate(batch_result.results, start=1):
+        print("\n" + DIVIDER)
+        print(f"VALIDATION CASE {index}")
+        _print_validation_case_detail(case_result)
+
+
+def _print_validation_case_detail(case_result: ValidationCaseResult) -> None:
+    print(f"  testcase_id: {case_result.testcase_id}")
+    print(f"  logical_case_name: {case_result.logical_case_name}")
+    print(f"  operation_id: {case_result.operation_id}")
+    print(f"  method: {case_result.method}")
+    print(f"  path: {case_result.path}")
+    print(f"  verdict: {case_result.verdict.value}")
+    print(f"  summary: {case_result.summary_message}")
+    print(f"  expected_statuses: {case_result.expected_statuses}")
+    print(f"  actual_status: {case_result.actual_status}")
+    print(f"  status_check_passed: {case_result.status_check_passed}")
+    print(f"  schema_check_passed: {case_result.schema_check_passed}")
+    print(f"  required_fields_check_passed: {case_result.required_fields_check_passed}")
+
+    if case_result.expected_required_fields:
+        print(f"  expected_required_fields: {case_result.expected_required_fields}")
+
+    if case_result.missing_required_fields:
+        print(f"  missing_required_fields: {case_result.missing_required_fields}")
+
+    if case_result.network_error:
+        print(f"  network_error: {case_result.network_error}")
+
+    if case_result.skip_reason:
+        print(f"  skip_reason: {case_result.skip_reason}")
+
+    if case_result.issues:
+        print("  issues:")
+        for issue in case_result.issues:
+            print(f"    - [{issue.level}] {issue.code}: {issue.message}")
+
+
+def _write_execution_reports(
+    *,
+    settings: Settings,
+    batch_result: ExecutionBatchResult,
+) -> dict[str, str]:
+    from dataclasses import asdict
+    from pathlib import Path
+    import json
+
+    root_dir = (
+        Path(settings.report_output_dir)
+        / "execution_runs"
+        / batch_result.target_name
+        / batch_result.thread_id
+    )
+    root_dir.mkdir(parents=True, exist_ok=True)
+
+    json_path = root_dir / "execution_batch.json"
+    md_path = root_dir / "execution_batch.md"
+
+    json_payload = asdict(batch_result)
+    json_path.write_text(
+        json.dumps(json_payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    md_path.write_text(
+        _build_execution_markdown(batch_result),
+        encoding="utf-8",
+    )
+
+    return {
+        "json_path": str(json_path),
+        "md_path": str(md_path),
+    }
+
+
+def _build_execution_markdown(batch_result: ExecutionBatchResult) -> str:
+    import json
+
+    lines: list[str] = []
+
+    lines.append("# Execution Batch Report")
+    lines.append("")
+    lines.append(f"- Thread ID: `{batch_result.thread_id}`")
+    lines.append(f"- Target: `{batch_result.target_name}`")
+    lines.append(f"- Total cases: `{batch_result.total_cases}`")
+    lines.append(f"- Executed cases: `{batch_result.executed_cases}`")
+    lines.append(f"- Skipped cases: `{batch_result.skipped_cases}`")
+    lines.append("")
+
+    for index, result in enumerate(batch_result.results, start=1):
+        lines.append(f"## {index}. [{result.test_type}] {result.logical_case_name}")
+        lines.append("")
+        lines.append(f"- Operation ID: `{result.operation_id}`")
+        lines.append(f"- Method: `{result.method}`")
+        lines.append(f"- Path: `{result.path}`")
+        lines.append(f"- Final URL: `{result.final_url}`")
+        lines.append(f"- Expected statuses: `{result.expected_statuses}`")
+        lines.append(f"- Actual status: `{result.actual_status}`")
+        lines.append(f"- Response time (ms): `{result.response_time_ms:.2f}`")
+        lines.append(f"- Executed at: `{result.executed_at}`")
+        lines.append(f"- Skip: `{result.skip}`")
+
+        if result.payload_source:
+            lines.append(f"- Payload source: `{result.payload_source}`")
+
+        if result.planner_reason:
+            lines.append(f"- Planner reason: {result.planner_reason}")
+
+        if result.planner_confidence is not None:
+            lines.append(f"- Planner confidence: `{result.planner_confidence:.2f}`")
+
+        if result.skip_reason:
+            lines.append(f"- Skip reason: {result.skip_reason}")
+
+        if result.network_error:
+            lines.append(f"- Network error: {result.network_error}")
+
+        if result.final_headers:
+            lines.append(f"- Headers: `{result.final_headers}`")
+
+        if result.final_query_params:
+            lines.append(f"- Query params: `{result.final_query_params}`")
+
+        if result.final_json_body is not None:
+            lines.append(f"- JSON body: `{result.final_json_body}`")
+
+        if result.response_json is not None:
+            lines.append("- Response JSON:")
+            lines.append("")
+            lines.append("```json")
+            lines.append(json.dumps(result.response_json, ensure_ascii=False, indent=2))
+            lines.append("```")
+        elif result.response_text is not None:
+            lines.append("- Response text:")
+            lines.append("")
+            lines.append("```text")
+            lines.append(result.response_text)
+            lines.append("```")
+
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _pretty_json(data: Any) -> str:
+    import json
+
+    try:
+        return json.dumps(data, ensure_ascii=False, indent=2)
+    except Exception:
+        return str(data)
 
 
 if __name__ == "__main__":

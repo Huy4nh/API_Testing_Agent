@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, cast
+from typing import Any
 
 from api_testing_agent.core.validation_models import (
     ValidationBatchResult,
@@ -53,6 +53,7 @@ class Validator:
             self._logger,
             thread_id=thread_id,
             target_name=target_name,
+            payload_source="validation_batch",
         )
         logger.info("Starting validation batch.")
 
@@ -116,6 +117,7 @@ class Validator:
             testcase_id=testcase_id,
             operation_id=operation_id,
             target_name=target_name,
+            payload_source="validation_case",
         )
         logger.info("Starting validation case.")
 

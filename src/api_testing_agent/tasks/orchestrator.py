@@ -29,6 +29,12 @@ from api_testing_agent.core.testcase_review_graph import (
 )
 from api_testing_agent.logging_config import bind_logger, get_logger
 
+import json
+from pathlib import Path
+
+from api_testing_agent.core.validation_models import ValidationBatchResult
+from api_testing_agent.core.validator import Validator
+
 @dataclass(frozen=True)
 class ReviewWorkflowResult:
     thread_id: str
@@ -57,6 +63,7 @@ class TestOrchestrator:
         scope_resolution_agent: ScopeResolutionAgent | None = None,
         feedback_scope_agent: FeedbackScopeAgent | None = None,
         understanding_service: RequestUnderstandingService | None = None,
+        validator: Validator | None = None,
     ) -> None:
         self._settings = settings
         self._logger = get_logger(__name__)
@@ -83,7 +90,8 @@ class TestOrchestrator:
                 scope_resolution_agent=self._scope_resolution_agent,
             )
         )
-
+        self._validator = validator or Validator()
+        
         self._draft_reporter = TestcaseDraftReporter(output_dir=settings.report_output_dir)
         self._feedback_scope_refiner = FeedbackScopeRefiner(self._feedback_scope_agent)
 
@@ -586,3 +594,51 @@ class TestOrchestrator:
             "draft_report_json_path": values.get("draft_report_json_path"),
             "draft_report_md_path": values.get("draft_report_md_path"),
         }
+    def validate_execution_batch(self, execution_batch_result: Any) -> ValidationBatchResult:
+        thread_id = self._extract_runtime_value(execution_batch_result, "thread_id")
+        target_name = self._extract_runtime_value(execution_batch_result, "target_name")
+
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=target_name,
+            payload_source="orchestrator_validate_execution_batch",
+        )
+        logger.info("Starting validation from execution batch.")
+
+        validation_batch = self._validator.validate_batch(execution_batch_result)
+
+        logger.info(
+            "Finished validation from execution batch.",
+            extra={
+                "pass_cases": validation_batch.pass_cases,
+                "fail_cases": validation_batch.fail_cases,
+                "skip_cases": validation_batch.skip_cases,
+                "error_cases": validation_batch.error_cases,
+            },
+        )
+        return validation_batch
+
+    def validate_execution_report_file(self, execution_report_path: str | Path) -> ValidationBatchResult:
+        report_path = Path(execution_report_path)
+
+        logger = bind_logger(
+            self._logger,
+            report_path=str(report_path),
+            payload_source="orchestrator_validate_execution_report_file",
+        )
+        logger.info("Loading execution report file for validation.")
+
+        if not report_path.exists():
+            raise FileNotFoundError(f"Execution report not found: {report_path}")
+
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("Execution report JSON root must be an object.")
+
+        return self.validate_execution_batch(payload)
+
+    def _extract_runtime_value(self, source: Any, key: str) -> Any:
+        if isinstance(source, dict):
+            return source.get(key)
+        return getattr(source, key, None)
