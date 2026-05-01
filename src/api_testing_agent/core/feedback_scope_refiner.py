@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from api_testing_agent.core.feedback_scope_agent import FeedbackScopeAgent
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,12 @@ class FeedbackScopeRefiner:
 
     def __init__(self, feedback_scope_agent: FeedbackScopeAgent) -> None:
         self._feedback_scope_agent = feedback_scope_agent
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized FeedbackScopeRefiner.",
+            extra={"payload_source": "feedback_scope_refiner_init"},
+        )
 
     def refine(
         self,
@@ -34,7 +41,17 @@ class FeedbackScopeRefiner:
         all_operation_contexts: list[dict],
         feedback_history: list[str],
     ) -> FeedbackScopeResult:
+        logger = bind_logger(
+            self._logger,
+            target_name=target_name,
+            payload_source="feedback_scope_refine",
+        )
+        logger.info(
+            f"Starting scope refinement. current_scope={len(current_operation_contexts)}, all_scope={len(all_operation_contexts)}, feedback_history={len(feedback_history)}"
+        )
+
         if not feedback_history:
+            logger.info("No feedback history found. Keeping current scope.")
             return FeedbackScopeResult(
                 operation_contexts=current_operation_contexts,
                 scope_note=None,
@@ -42,11 +59,13 @@ class FeedbackScopeRefiner:
 
         latest_feedback = feedback_history[-1].strip()
         if not latest_feedback:
+            logger.info("Latest feedback is empty. Keeping current scope.")
             return FeedbackScopeResult(
                 operation_contexts=current_operation_contexts,
                 scope_note=None,
             )
 
+        logger.info("Invoking FeedbackScopeAgent for scope refinement.")
         decision = self._feedback_scope_agent.decide(
             feedback_text=latest_feedback,
             target_name=target_name,
@@ -54,13 +73,17 @@ class FeedbackScopeRefiner:
             current_scope_hints=self._build_operation_hints(current_operation_contexts),
         )
 
+        logger.info(f"Feedback scope refinement decision received. action_mode={decision.action_mode}")
+
         if decision.action_mode == "keep":
+            logger.info("Keeping current scope based on feedback decision.")
             return FeedbackScopeResult(
                 operation_contexts=current_operation_contexts,
                 scope_note="Feedback không thay đổi phạm vi test. Giữ nguyên scope hiện tại.",
             )
 
         if decision.action_mode == "reset_all":
+            logger.info("Resetting scope to all operations.")
             return FeedbackScopeResult(
                 operation_contexts=all_operation_contexts,
                 scope_note="Feedback đã chuyển phạm vi về: toàn bộ chức năng của target.",
@@ -73,8 +96,11 @@ class FeedbackScopeRefiner:
             matched_tags=decision.matched_tags,
         )
 
+        logger.info(f"Resolved matched operations from feedback. count={len(matched_operations)}")
+
         if decision.action_mode == "invalid_feedback":
             invalid_text = decision.invalid_feedback_text or latest_feedback
+            logger.warning(f"Feedback marked as invalid. invalid_text={invalid_text}")
             return FeedbackScopeResult(
                 operation_contexts=current_operation_contexts,
                 scope_note=(
@@ -84,6 +110,7 @@ class FeedbackScopeRefiner:
             )
 
         if not matched_operations:
+            logger.warning("Feedback intended to change scope but no operations could be mapped.")
             return FeedbackScopeResult(
                 operation_contexts=current_operation_contexts,
                 scope_note=(
@@ -93,6 +120,7 @@ class FeedbackScopeRefiner:
             )
 
         if decision.action_mode == "replace_with_specific":
+            logger.info("Replacing scope with specific matched operations.")
             return FeedbackScopeResult(
                 operation_contexts=matched_operations,
                 scope_note=f"Feedback đã thay phạm vi test thành: {latest_feedback}",
@@ -103,6 +131,7 @@ class FeedbackScopeRefiner:
                 current_operation_contexts=current_operation_contexts,
                 extra_operations=matched_operations,
             )
+            logger.info(f"Extended scope with specific operations. merged_count={len(merged)}")
             return FeedbackScopeResult(
                 operation_contexts=merged,
                 scope_note=f"Feedback đã mở rộng phạm vi test theo yêu cầu: {latest_feedback}",
@@ -113,11 +142,13 @@ class FeedbackScopeRefiner:
                 current_operation_contexts=current_operation_contexts,
                 remove_operations=matched_operations,
             )
+            logger.info(f"Reduced scope by removing specific operations. reduced_count={len(reduced)}")
             return FeedbackScopeResult(
                 operation_contexts=reduced,
                 scope_note=f"Feedback đã loại bớt phạm vi test theo yêu cầu: {latest_feedback}",
             )
 
+        logger.info("Fallback: keeping current scope.")
         return FeedbackScopeResult(
             operation_contexts=current_operation_contexts,
             scope_note="Feedback không thay đổi phạm vi test. Giữ nguyên scope hiện tại.",
@@ -168,7 +199,6 @@ class FeedbackScopeRefiner:
                 resolved.append(operation)
                 continue
 
-        # unique theo operation_id + path + method
         unique: list[dict] = []
         seen: set[tuple[str, str, str]] = set()
 

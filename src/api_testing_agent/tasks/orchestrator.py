@@ -3,7 +3,9 @@ from __future__ import annotations
 import sqlite3
 import uuid
 from dataclasses import dataclass
+from typing import Any, cast
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
@@ -20,10 +22,12 @@ from api_testing_agent.core.request_understanding_service import (
 )
 from api_testing_agent.core.scope_resolution_agent import ScopeResolutionAgent
 from api_testing_agent.core.target_resolution_agent import TargetResolutionAgent
-from api_testing_agent.core.testcase_review_graph import build_testcase_review_graph
 from api_testing_agent.core.target_registry import TargetRegistry
-
-from typing import Any
+from api_testing_agent.core.testcase_review_graph import (
+    TestcaseReviewState,
+    build_testcase_review_graph,
+)
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 @dataclass(frozen=True)
 class ReviewWorkflowResult:
@@ -55,6 +59,8 @@ class TestOrchestrator:
         understanding_service: RequestUnderstandingService | None = None,
     ) -> None:
         self._settings = settings
+        self._logger = get_logger(__name__)
+
         self._registry = TargetRegistry.from_json_file(settings.target_registry_path)
         self._ingestor = OpenApiIngestor(timeout_seconds=settings.http_timeout_seconds)
 
@@ -93,7 +99,12 @@ class TestOrchestrator:
             checkpointer=self._checkpointer,
         )
 
-        self._pending_target_selections: dict[str, dict] = {}
+        self._pending_target_selections: dict[str, dict[str, Any]] = {}
+
+        self._logger.info(
+            "Initialized TestOrchestrator.",
+            extra={"payload_source": "orchestrator_init"},
+        )
 
     def set_ai_model(self, model_name: str) -> None:
         cleaned = model_name.strip()
@@ -106,6 +117,11 @@ class TestOrchestrator:
         self._scope_resolution_agent.set_model_name(cleaned)
         self._feedback_scope_agent.set_model_name(cleaned)
 
+        self._logger.info(
+            f"Updated AI model to {cleaned}.",
+            extra={"payload_source": "set_ai_model"},
+        )
+
     def start_review_from_text(
         self,
         text: str,
@@ -115,13 +131,23 @@ class TestOrchestrator:
         actual_thread_id = thread_id or uuid.uuid4().hex
         raw_text = text.strip()
 
+        logger = bind_logger(
+            self._logger,
+            thread_id=actual_thread_id,
+            payload_source="start_review",
+        )
+        logger.info("Starting review workflow from raw text.")
+
         available_targets = self._registry.list_names()
         decision = self._target_resolution_agent.decide(
             raw_text=raw_text,
             available_targets=available_targets,
         )
 
+        logger.info(f"Target resolution mode={decision.mode}.")
+
         if decision.mode == "no_match":
+            logger.warning("Target resolution returned no match.")
             return ReviewWorkflowResult(
                 thread_id=actual_thread_id,
                 status="target_not_found",
@@ -131,6 +157,10 @@ class TestOrchestrator:
             )
 
         if decision.mode == "auto_select" and decision.selected_target:
+            logger.info(
+                "Target auto-selected.",
+                extra={"target_name": decision.selected_target},
+            )
             return self._continue_after_target_selected(
                 thread_id=actual_thread_id,
                 raw_text=raw_text,
@@ -144,6 +174,11 @@ class TestOrchestrator:
             "selection_question": decision.question or "Bạn muốn chọn target nào?",
             "reason": decision.reason,
         }
+
+        logger.info(
+            "Workflow entered pending_target_selection.",
+            extra={"target_name": ",".join(candidate_names)},
+        )
 
         return ReviewWorkflowResult(
             thread_id=actual_thread_id,
@@ -160,21 +195,30 @@ class TestOrchestrator:
         *,
         selection: str,
     ) -> ReviewWorkflowResult:
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            payload_source="resume_target_selection",
+        )
+        logger.info("Resuming target selection.")
+
         pending = self._pending_target_selections.get(thread_id)
         if pending is None:
+            logger.warning("No pending target selection found.")
             return ReviewWorkflowResult(
                 thread_id=thread_id,
                 status="target_not_found",
                 message="No pending target selection found for this thread.",
             )
 
-        raw_text = pending["raw_text"]
-        candidate_names = pending["candidate_targets"]
-        question = pending["selection_question"]
+        raw_text = str(pending["raw_text"])
+        candidate_names = list(pending["candidate_targets"])
+        question = str(pending["selection_question"])
 
         cleaned = selection.strip()
         if cleaned.lower() in {"cancel", "huy", "hủy"}:
             self._pending_target_selections.pop(thread_id, None)
+            logger.info("User cancelled target selection.")
             return ReviewWorkflowResult(
                 thread_id=thread_id,
                 status="cancelled",
@@ -184,7 +228,7 @@ class TestOrchestrator:
                 message="Target selection was cancelled.",
             )
 
-        selected = None
+        selected: str | None = None
         if cleaned.isdigit():
             index = int(cleaned)
             if 1 <= index <= len(candidate_names):
@@ -196,6 +240,7 @@ class TestOrchestrator:
                     break
 
         if selected is None:
+            logger.warning("Invalid target selection submitted by user.")
             return ReviewWorkflowResult(
                 thread_id=thread_id,
                 status="pending_target_selection",
@@ -209,6 +254,8 @@ class TestOrchestrator:
             )
 
         self._pending_target_selections.pop(thread_id, None)
+        logger.info("Target selected by user.", extra={"target_name": selected})
+
         return self._continue_after_target_selected(
             thread_id=thread_id,
             raw_text=raw_text,
@@ -222,7 +269,14 @@ class TestOrchestrator:
         action: str,
         feedback: str = "",
     ) -> ReviewWorkflowResult:
-        config = {"configurable": {"thread_id": self._review_thread_id(thread_id)}}
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            payload_source="resume_review",
+        )
+        logger.info(f"Resuming review with action={action}.")
+
+        config = self._graph_config(thread_id)
 
         self._review_graph.invoke(
             Command(
@@ -232,13 +286,16 @@ class TestOrchestrator:
                 }
             ),
             config=config,
-            version="v2",
         )
 
         snapshot = self._review_graph.get_state(config)
-        values = snapshot.values
+        values = dict(snapshot.values)
 
         if values.get("cancelled"):
+            logger.info(
+                "Review workflow cancelled.",
+                extra={"target_name": str(values.get("target_name", "-"))},
+            )
             return ReviewWorkflowResult(
                 thread_id=thread_id,
                 status="cancelled",
@@ -254,6 +311,10 @@ class TestOrchestrator:
             )
 
         if values.get("approved"):
+            logger.info(
+                "Review workflow approved.",
+                extra={"target_name": str(values.get("target_name", "-"))},
+            )
             return ReviewWorkflowResult(
                 thread_id=thread_id,
                 status="approved",
@@ -268,6 +329,7 @@ class TestOrchestrator:
                 message="Review approved.",
             )
 
+        logger.info("Review workflow remains pending_review.")
         return self._build_review_result_from_snapshot(thread_id, snapshot)
 
     def _continue_after_target_selected(
@@ -277,9 +339,19 @@ class TestOrchestrator:
         raw_text: str,
         selected_target: str,
     ) -> ReviewWorkflowResult:
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=selected_target,
+            payload_source="target_selected",
+        )
+        logger.info("Continuing workflow after target selected.")
+
         target = self._registry.get(selected_target)
         operations = self._ingestor.load_for_target(target)
         operation_hints = self._build_operation_hints(operations)
+
+        logger.info(f"Loaded {len(operations)} operations for selected target.")
 
         try:
             understanding = self._understanding_service.understand(
@@ -288,6 +360,7 @@ class TestOrchestrator:
                 operation_hints=operation_hints,
             )
         except InvalidFunctionRequestError as exc:
+            logger.warning("Understanding failed with invalid function request.")
             return ReviewWorkflowResult(
                 thread_id=thread_id,
                 status="invalid_function",
@@ -296,6 +369,8 @@ class TestOrchestrator:
                 available_functions=exc.available_functions,
                 message=str(exc),
             )
+
+        logger.info("Understanding service completed successfully.")
 
         return self._start_review_after_understanding(
             understanding=understanding,
@@ -308,15 +383,28 @@ class TestOrchestrator:
         *,
         understanding: UnderstandingResult,
         thread_id: str,
-        operations: list,
+        operations: list[Any],
     ) -> ReviewWorkflowResult:
         plan = understanding.plan
         target = self._registry.get(plan.target_name)
 
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=target.name,
+            payload_source="start_review_after_understanding",
+        )
+        logger.info("Starting review graph after understanding phase.")
+
         filtered_operations = self._filter_operations(operations, plan)
         filtered_operations = filtered_operations[: plan.limit_endpoints]
 
+        logger.info(
+            f"Filtered operations count={len(filtered_operations)} from total={len(operations)}."
+        )
+
         if not filtered_operations:
+            logger.error("No operations matched the request after filtering.")
             raise ValueError("No operations matched the request.")
 
         operation_contexts = [
@@ -324,9 +412,9 @@ class TestOrchestrator:
             for operation in filtered_operations
         ]
 
-        config = {"configurable": {"thread_id": self._review_thread_id(thread_id)}}
+        config = self._graph_config(thread_id)
 
-        initial_state = {
+        initial_state: TestcaseReviewState = {
             "thread_id": thread_id,
             "user_request_text": understanding.original_text,
             "canonical_command": understanding.canonical_command,
@@ -348,12 +436,15 @@ class TestOrchestrator:
             "cancelled": False,
         }
 
-        self._review_graph.invoke(initial_state, config=config, version="v2")
+        self._review_graph.invoke(initial_state, config=config)
         snapshot = self._review_graph.get_state(config)
+
+        logger.info("Initial review graph invocation completed.")
+
         return self._build_review_result_from_snapshot(thread_id, snapshot)
 
-    def _build_operation_hints(self, operations: list) -> list[dict]:
-        hints: list[dict] = []
+    def _build_operation_hints(self, operations: list[Any]) -> list[dict[str, Any]]:
+        hints: list[dict[str, Any]] = []
         for operation in operations:
             hints.append(
                 {
@@ -366,9 +457,17 @@ class TestOrchestrator:
             )
         return hints
 
-    def _build_review_result_from_snapshot(self, thread_id: str, snapshot) -> ReviewWorkflowResult:
-        values = snapshot.values
+    def _build_review_result_from_snapshot(self, thread_id: str, snapshot: Any) -> ReviewWorkflowResult:
+        values = dict(snapshot.values)
         status = "pending_review" if self._snapshot_has_interrupt(snapshot) else "idle"
+
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=str(values.get("target_name", "-")),
+            payload_source="snapshot_to_result",
+        )
+        logger.info(f"Building ReviewWorkflowResult from snapshot with status={status}.")
 
         return ReviewWorkflowResult(
             thread_id=thread_id,
@@ -385,8 +484,8 @@ class TestOrchestrator:
             message=None,
         )
 
-    def _filter_operations(self, operations, plan):
-        filtered = []
+    def _filter_operations(self, operations: list[Any], plan: Any) -> list[Any]:
+        filtered: list[Any] = []
 
         for operation in operations:
             if plan.methods and operation.method not in plan.methods:
@@ -405,7 +504,7 @@ class TestOrchestrator:
 
         return filtered
 
-    def _build_operation_context(self, operation) -> dict:
+    def _build_operation_context(self, operation: Any) -> dict[str, Any]:
         return {
             "operation_id": operation.operation_id,
             "method": operation.method.value.upper(),
@@ -432,7 +531,7 @@ class TestOrchestrator:
             "responses": operation.responses,
         }
 
-    def _snapshot_has_interrupt(self, snapshot) -> bool:
+    def _snapshot_has_interrupt(self, snapshot: Any) -> bool:
         for task in getattr(snapshot, "tasks", ()):
             interrupts = getattr(task, "interrupts", ())
             if interrupts:
@@ -441,6 +540,12 @@ class TestOrchestrator:
 
     def _review_thread_id(self, thread_id: str) -> str:
         return f"review::{thread_id}"
+
+    def _graph_config(self, thread_id: str) -> RunnableConfig:
+        return cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": self._review_thread_id(thread_id)}},
+        )
 
     def _create_checkpointer(self, mode: str, sqlite_path: str):
         normalized = mode.strip().lower()
@@ -452,9 +557,9 @@ class TestOrchestrator:
             return SqliteSaver(connection)
 
         return InMemorySaver()
-    
+
     def get_review_state_values(self, thread_id: str) -> dict[str, Any]:
-        config = {"configurable": {"thread_id": self._review_thread_id(thread_id)}}
+        config = self._graph_config(thread_id)
         snapshot = self._review_graph.get_state(config)
         return dict(snapshot.values)
 

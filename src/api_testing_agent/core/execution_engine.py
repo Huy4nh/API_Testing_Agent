@@ -16,6 +16,7 @@ from api_testing_agent.core.request_runtime_builder import RequestRuntimeBuilder
 from api_testing_agent.core.unknown_output_description_service import (
     UnknownOutputDescriptionService,
 )
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class ExecutionEngine:
@@ -33,6 +34,12 @@ class ExecutionEngine:
         self._log_formatter = log_formatter or ExecutionLogFormatter()
         self._transport = transport
         self._unknown_output_description_service = unknown_output_description_service
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized ExecutionEngine. timeout_seconds={self._timeout_seconds}",
+            extra={"payload_source": "execution_engine_init"},
+        )
 
     def execute_approved_draft(
         self,
@@ -45,6 +52,14 @@ class ExecutionEngine:
     ) -> ExecutionBatchResult:
         operation_index = self._build_operation_index(operation_contexts)
 
+        batch_logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=target_name,
+            payload_source="execution_batch",
+        )
+        batch_logger.info("Starting approved draft execution.")
+
         results: list[ExecutionCaseResult] = []
         total_cases = 0
         executed_cases = 0
@@ -53,10 +68,28 @@ class ExecutionEngine:
         for group in draft_groups:
             operation_context = self._resolve_operation_context(group, operation_index)
             if operation_context is None:
+                batch_logger.warning(
+                    "Could not resolve operation context for draft group.",
+                    extra={
+                        "operation_id": str(group.get("operation_id", "-")),
+                    },
+                )
                 continue
 
             for case_index, case in enumerate(group.get("cases", []), start=1):
                 total_cases += 1
+
+                batch_logger.info(
+                    "Preparing runtime request for case.",
+                    extra={
+                        "operation_id": str(operation_context.get("operation_id", "-")),
+                        "testcase_id": str(
+                            case.get("testcase_id")
+                            or case.get("id")
+                            or f"case_{case_index}"
+                        ),
+                    },
+                )
 
                 runtime_request = self._runtime_builder.build(
                     target=target,
@@ -68,11 +101,29 @@ class ExecutionEngine:
 
                 if runtime_request.skip:
                     skipped_cases += 1
+                    case_logger = bind_logger(
+                        self._logger,
+                        thread_id=thread_id,
+                        target_name=target_name,
+                        operation_id=runtime_request.operation_id,
+                        testcase_id=runtime_request.testcase_id,
+                        payload_source=runtime_request.payload_source or "-",
+                    )
+                    case_logger.info("Skipping runtime request.")
                     results.append(self._build_skipped_result(runtime_request))
                     continue
 
                 executed_cases += 1
-                results.append(self.execute_runtime_request(runtime_request))
+                results.append(
+                    self.execute_runtime_request(
+                        runtime_request=runtime_request,
+                        thread_id=thread_id,
+                    )
+                )
+
+        batch_logger.info(
+            f"Execution batch finished. total_cases={total_cases}, executed_cases={executed_cases}, skipped_cases={skipped_cases}"
+        )
 
         return ExecutionBatchResult(
             thread_id=thread_id,
@@ -83,11 +134,26 @@ class ExecutionEngine:
             results=results,
         )
 
-    def execute_runtime_request(self, runtime_request: RuntimeRequest) -> ExecutionCaseResult:
+    def execute_runtime_request(
+        self,
+        runtime_request: RuntimeRequest,
+        thread_id: str = "-",
+    ) -> ExecutionCaseResult:
         started = time.perf_counter()
         executed_at = datetime.now(timezone.utc).isoformat()
 
         raw_headers = dict(runtime_request.final_headers)
+
+        case_logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=runtime_request.target_name,
+            operation_id=runtime_request.operation_id,
+            testcase_id=runtime_request.testcase_id,
+            payload_source=runtime_request.payload_source or "-",
+        )
+
+        case_logger.info("Sending HTTP request.")
 
         try:
             with httpx.Client(
@@ -105,7 +171,14 @@ class ExecutionEngine:
 
             elapsed_ms = (time.perf_counter() - started) * 1000
 
-            response_json, response_text = self._extract_response_payload(response)
+            response_json, response_text = self._extract_response_payload(
+                response=response,
+                case_logger=case_logger,
+            )
+
+            case_logger.info(
+                f"Received HTTP response status={response.status_code} time_ms={elapsed_ms:.2f}"
+            )
 
             return ExecutionCaseResult(
                 testcase_id=runtime_request.testcase_id,
@@ -129,10 +202,14 @@ class ExecutionEngine:
                 test_type=runtime_request.test_type,
                 skip=False,
                 skip_reason=None,
+                planner_reason=runtime_request.planner_reason,
+                planner_confidence=runtime_request.planner_confidence,
+                payload_source=runtime_request.payload_source,
             )
 
         except Exception as exc:
             elapsed_ms = (time.perf_counter() - started) * 1000
+            case_logger.exception("Runtime request failed with exception.")
 
             return ExecutionCaseResult(
                 testcase_id=runtime_request.testcase_id,
@@ -156,11 +233,15 @@ class ExecutionEngine:
                 test_type=runtime_request.test_type,
                 skip=False,
                 skip_reason=None,
+                planner_reason=runtime_request.planner_reason,
+                planner_confidence=runtime_request.planner_confidence,
+                payload_source=runtime_request.payload_source,
             )
 
     def _extract_response_payload(
         self,
         response: httpx.Response,
+        case_logger=None,
     ) -> tuple[Any | None, str | None]:
         response_headers = dict(response.headers)
         content_type = str(response_headers.get("content-type", "")).lower().strip()
@@ -168,29 +249,32 @@ class ExecutionEngine:
         status_code = response.status_code
 
         if self._looks_like_json_content_type(content_type):
+            if case_logger is not None:
+                case_logger.info("Response detected as JSON content type.")
             try:
                 return response.json(), None
             except Exception:
+                if case_logger is not None:
+                    case_logger.warning("JSON response parsing failed. Falling back to safe text decode.")
                 return None, self._safe_decode_text(raw_bytes)
 
         if self._looks_like_known_binary_content_type(content_type) or self._looks_like_known_binary_bytes(raw_bytes):
+            if case_logger is not None:
+                case_logger.info("Response detected as known binary payload.")
             return None, self._binary_summary(
                 content_type=content_type,
                 raw_bytes=raw_bytes,
             )
 
         if self._looks_like_known_text_content_type(content_type):
+            if case_logger is not None:
+                case_logger.info("Response detected as known text payload.")
             return None, self._safe_decode_text(raw_bytes)
 
-        # Đây là nhánh mới:
-        # - response có body
-        # - status thành công
-        # - không phải JSON
-        # - không phải binary quen thuộc
-        # - không phải text quen thuộc
-        # => nhờ AI mô tả đại khái
         if 200 <= status_code < 300 and raw_bytes:
             if self._unknown_output_description_service is not None:
+                if case_logger is not None:
+                    case_logger.info("Response type unknown but successful. Delegating to UnknownOutputDescriptionService.")
                 ai_summary = self._unknown_output_description_service.describe(
                     status_code=status_code,
                     headers=response_headers,
@@ -198,7 +282,8 @@ class ExecutionEngine:
                 )
                 return None, ai_summary
 
-        # fallback cuối cùng
+        if case_logger is not None:
+            case_logger.info("Response type not confidently identified. Falling back to safe text decode.")
         return None, self._safe_decode_text(raw_bytes)
 
     def _looks_like_json_content_type(self, content_type: str) -> bool:
@@ -319,6 +404,9 @@ class ExecutionEngine:
             test_type=runtime_request.test_type,
             skip=True,
             skip_reason=runtime_request.skip_reason,
+            planner_reason=runtime_request.planner_reason,
+            planner_confidence=runtime_request.planner_confidence,
+            payload_source=runtime_request.payload_source,
         )
 
     def _build_operation_index(

@@ -8,6 +8,7 @@ from api_testing_agent.core.intent_parser import RuleBasedIntentParser
 from api_testing_agent.core.models import HttpMethod, TestType
 from api_testing_agent.core.scope_resolution_agent import ScopeResolutionAgent
 from api_testing_agent.core.scope_resolution_models import ScopeResolutionDecision
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class UnderstandingError(ValueError):
@@ -50,6 +51,12 @@ class RequestUnderstandingService:
     ) -> None:
         self._parser = parser or RuleBasedIntentParser()
         self._scope_resolution_agent = scope_resolution_agent
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized RequestUnderstandingService.",
+            extra={"payload_source": "understanding_init"},
+        )
 
     def understand(
         self,
@@ -58,14 +65,26 @@ class RequestUnderstandingService:
         forced_target_name: str,
         operation_hints: list[dict],
     ) -> UnderstandingResult:
+        logger = bind_logger(
+            self._logger,
+            target_name=forced_target_name or "-",
+            payload_source="understanding",
+        )
+        logger.info(
+            f"Starting understand(). operation_hints_count={len(operation_hints)}"
+        )
+
         cleaned = raw_text.strip()
         if not cleaned:
+            logger.warning("Understanding failed because input text is empty.")
             raise UnderstandingError("Input text is empty.")
 
         if not forced_target_name:
+            logger.warning("Understanding failed because forced_target_name is missing.")
             raise UnderstandingError("forced_target_name is required.")
 
         if self._looks_like_canonical_command(cleaned):
+            logger.info("Detected canonical command input. Parsing directly.")
             parsed = self._parser.parse(cleaned)
             plan = ResolvedPlan(
                 target_name=parsed.target_name or forced_target_name,
@@ -76,6 +95,9 @@ class RequestUnderstandingService:
                 ignore_fields=list(parsed.ignore_fields),
                 limit_endpoints=int(parsed.limit_endpoints),
             )
+            logger.info(
+                f"Canonical command parsed successfully. methods={len(plan.methods)}, paths={len(plan.paths)}, test_types={len(plan.test_types)}"
+            )
             return UnderstandingResult(
                 original_text=cleaned,
                 canonical_command=cleaned,
@@ -84,13 +106,16 @@ class RequestUnderstandingService:
             )
 
         if self._scope_resolution_agent is None:
+            logger.error("ScopeResolutionAgent is required but not configured.")
             raise UnderstandingError("ScopeResolutionAgent is required.")
 
+        logger.info("Invoking ScopeResolutionAgent.")
         decision = self._scope_resolution_agent.decide(
             raw_text=cleaned,
             target_name=forced_target_name,
             operation_hints=operation_hints,
         )
+        logger.info(f"Scope resolution completed. scope_mode={decision.scope_mode}")
 
         return self._build_result_from_scope_decision(
             raw_text=cleaned,
@@ -107,10 +132,21 @@ class RequestUnderstandingService:
         operation_hints: list[dict],
         decision: ScopeResolutionDecision,
     ) -> UnderstandingResult:
+        logger = bind_logger(
+            self._logger,
+            target_name=forced_target_name,
+            payload_source="understanding_scope_decision",
+        )
+        logger.info(f"Building UnderstandingResult from scope_mode={decision.scope_mode}")
+
         methods_override = self._extract_methods(raw_text)
         test_types = self._extract_test_types(raw_text)
         ignore_fields = self._extract_ignore_fields(raw_text)
         limit_endpoints = self._extract_limit(raw_text) or self.DEFAULT_LIMIT
+
+        logger.info(
+            f"Extracted constraints. methods_override={len(methods_override)}, test_types={len(test_types)}, ignore_fields={len(ignore_fields)}, limit_endpoints={limit_endpoints}"
+        )
 
         if decision.scope_mode == "all":
             plan = ResolvedPlan(
@@ -123,6 +159,7 @@ class RequestUnderstandingService:
                 limit_endpoints=limit_endpoints,
             )
             canonical_command = self._build_canonical_command(plan)
+            logger.info("Resolved scope_mode=all successfully.")
             return UnderstandingResult(
                 original_text=raw_text,
                 canonical_command=canonical_command,
@@ -136,6 +173,9 @@ class RequestUnderstandingService:
         if decision.scope_mode == "invalid_function":
             available_functions = self._build_available_functions(operation_hints)
             invalid_name = decision.invalid_requested_function or "unknown function"
+            logger.warning(
+                f"Resolved scope_mode=invalid_function. invalid_requested_function={invalid_name}"
+            )
             raise InvalidFunctionRequestError(
                 f"Không tìm thấy chức năng '{invalid_name}' trong target '{forced_target_name}'.",
                 available_functions=available_functions,
@@ -148,7 +188,10 @@ class RequestUnderstandingService:
             matched_tags=decision.matched_tags,
         )
 
+        logger.info(f"Resolved specific matches count={len(matched)}")
+
         if not matched:
+            logger.warning("No specific matches resolved from scope decision.")
             raise InvalidFunctionRequestError(
                 f"Không xác định được chức năng cụ thể trong target '{forced_target_name}'.",
                 available_functions=self._build_available_functions(operation_hints),
@@ -169,6 +212,9 @@ class RequestUnderstandingService:
         canonical_command = self._build_canonical_command(plan)
 
         matched_labels = [f"{item.get('method', '')} {item.get('path', '')}" for item in matched]
+        logger.info(
+            f"Built specific-scope understanding successfully. matched_labels={matched_labels}"
+        )
         return UnderstandingResult(
             original_text=raw_text,
             canonical_command=canonical_command,

@@ -21,6 +21,11 @@ class RuntimeRequest:
     skip: bool = False
     skip_reason: str | None = None
 
+    # Nâng cấp mới
+    planner_reason: str | None = None
+    planner_confidence: float | None = None
+    payload_source: str | None = None
+
 
 @dataclass(frozen=True)
 class ExecutionCaseResult:
@@ -45,6 +50,11 @@ class ExecutionCaseResult:
     test_type: str
     skip: bool = False
     skip_reason: str | None = None
+
+    # Nâng cấp mới
+    planner_reason: str | None = None
+    planner_confidence: float | None = None
+    payload_source: str | None = None
 
 
 @dataclass(frozen=True)

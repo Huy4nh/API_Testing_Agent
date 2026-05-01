@@ -4,6 +4,7 @@ from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 
 from api_testing_agent.core.target_resolution_models import TargetResolutionDecision
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class TargetResolutionAgent:
@@ -17,6 +18,7 @@ class TargetResolutionAgent:
     def __init__(self, model_name: str = "openai:gpt-5.2") -> None:
         self._model_name = ""
         self._agent = None
+        self._logger = get_logger(__name__)
         self._system_prompt = (
             "Bạn là trợ lý chọn target API.\n"
             "Bạn chỉ được dùng các target trong danh sách available_targets.\n"
@@ -27,10 +29,22 @@ class TargetResolutionAgent:
         )
         self.set_model_name(model_name)
 
+        self._logger.info(
+            f"Initialized TargetResolutionAgent with model={self._model_name}.",
+            extra={"payload_source": "target_resolution_init"},
+        )
+
     def set_model_name(self, model_name: str) -> None:
         cleaned = model_name.strip()
         if not cleaned:
             raise ValueError("Model name must not be empty.")
+
+        logger = bind_logger(
+            self._logger,
+            payload_source="target_resolution_set_model",
+        )
+        logger.info(f"Setting target resolution model to {cleaned}")
+
         self._model_name = cleaned
         model = init_chat_model(cleaned)
         self._agent = create_agent(
@@ -38,6 +52,8 @@ class TargetResolutionAgent:
             tools=[],
             response_format=TargetResolutionDecision,
         )
+
+        logger.info("Target resolution agent model initialized successfully.")
 
     def get_model_name(self) -> str:
         return self._model_name
@@ -48,7 +64,16 @@ class TargetResolutionAgent:
         raw_text: str,
         available_targets: list[str],
     ) -> TargetResolutionDecision:
+        logger = bind_logger(
+            self._logger,
+            payload_source="target_resolution_decide",
+        )
+        logger.info(
+            f"Starting target resolution. available_targets_count={len(available_targets)}"
+        )
+
         if self._agent is None:
+            logger.error("TargetResolutionAgent is not initialized.")
             raise ValueError("TargetResolutionAgent is not initialized.")
 
         result = self._agent.invoke(
@@ -69,5 +94,10 @@ class TargetResolutionAgent:
 
         structured = result.get("structured_response")
         if structured is None:
+            logger.error("Target resolution agent did not return structured_response.")
             raise ValueError("Target resolution agent did not return structured_response.")
+
+        logger.info(
+            f"Target resolution completed. mode={structured.mode}, selected_target={structured.selected_target}"
+        )
         return structured

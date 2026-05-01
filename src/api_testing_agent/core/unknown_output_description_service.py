@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import hashlib
-import string
 from typing import Any
 
 from langchain.chat_models import init_chat_model
+
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class UnknownOutputDescriptionService:
@@ -13,7 +14,7 @@ class UnknownOutputDescriptionService:
     - JSON
     - text thường
     - binary quen thuộc (image/pdf/zip...)
-    
+
     Lưu ý:
     - Không gửi toàn bộ raw output cho AI
     - Chỉ gửi metadata + sample nhỏ, an toàn
@@ -28,6 +29,7 @@ class UnknownOutputDescriptionService:
         max_bytes_for_signature: int = 64,
         max_text_preview_chars: int = 240,
     ) -> None:
+        self._logger = get_logger(__name__)
         self._model_name = model_name.strip()
         self._model_provider = model_provider.strip() if model_provider else None
         self._max_bytes_for_signature = max_bytes_for_signature
@@ -36,11 +38,21 @@ class UnknownOutputDescriptionService:
         if not self._model_name:
             raise ValueError("model_name must not be empty.")
 
+        init_logger = bind_logger(
+            self._logger,
+            payload_source="unknown_output_service_init",
+        )
+        init_logger.info(
+            f"Initializing UnknownOutputDescriptionService. model_name={self._model_name}, model_provider={self._model_provider}"
+        )
+
         self._llm = init_chat_model(
             self._model_name,
             model_provider=self._model_provider,
             temperature=0,
         )
+
+        init_logger.info("UnknownOutputDescriptionService initialized successfully.")
 
     def describe(
         self,
@@ -49,6 +61,14 @@ class UnknownOutputDescriptionService:
         headers: dict[str, str],
         raw_bytes: bytes,
     ) -> str:
+        logger = bind_logger(
+            self._logger,
+            payload_source="unknown_output_describe",
+        )
+        logger.info(
+            f"Describing unknown successful output. status_code={status_code}, size_bytes={len(raw_bytes)}"
+        )
+
         content_type = str(headers.get("content-type", "")).strip()
         size_bytes = len(raw_bytes)
 
@@ -68,11 +88,14 @@ class UnknownOutputDescriptionService:
             content = self._extract_model_text(result).strip()
 
             if content:
+                logger.info("Unknown output description generated successfully by AI.")
                 return content
 
+            logger.warning("AI returned empty description for unknown output. Using fallback summary.")
             return self._fallback_summary(payload)
 
         except Exception:
+            logger.exception("AI description for unknown output failed. Using fallback summary.")
             return self._fallback_summary(payload)
 
     def _build_printable_preview(self, raw_bytes: bytes) -> str:

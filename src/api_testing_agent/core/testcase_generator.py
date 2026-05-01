@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import copy
 import uuid
 from typing import Any
@@ -13,11 +11,18 @@ from api_testing_agent.core.models import (
     TestType,
 )
 from api_testing_agent.core.schema_faker import SchemaFaker
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class TestCaseGenerator:
     def __init__(self) -> None:
         self._faker = SchemaFaker()
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized TestCaseGenerator.",
+            extra={"payload_source": "testcase_generator_init"},
+        )
 
     def generate(
         self,
@@ -25,12 +30,33 @@ class TestCaseGenerator:
         operations: list[OpenApiOperation],
         plan: TestPlan,
     ) -> list[TestCase]:
+        logger = bind_logger(
+            self._logger,
+            target_name=target.name,
+            payload_source="testcase_generator_generate",
+        )
+        logger.info(
+            f"Starting testcase generation. operations={len(operations)}, requested_test_types={len(plan.test_types)}"
+        )
+
         filtered_operations = self._filter_operations(operations, plan)
         filtered_operations = filtered_operations[: plan.limit_endpoints]
+
+        logger.info(f"Filtered operations count={len(filtered_operations)} after applying plan.")
 
         test_cases: list[TestCase] = []
 
         for operation in filtered_operations:
+            operation_logger = bind_logger(
+                self._logger,
+                target_name=target.name,
+                operation_id=operation.operation_id,
+                payload_source="testcase_generator_operation",
+            )
+            operation_logger.info(
+                f"Generating cases for operation {operation.method.value.upper()} {operation.path}"
+            )
+
             for test_type in plan.test_types:
                 case = self._build_case(
                     target=target,
@@ -41,6 +67,9 @@ class TestCaseGenerator:
                 if case is not None:
                     test_cases.append(case)
 
+            operation_logger.info("Finished generating cases for operation.")
+
+        logger.info(f"Testcase generation completed. total_cases={len(test_cases)}")
         return test_cases
 
     def _filter_operations(
@@ -74,6 +103,14 @@ class TestCaseGenerator:
         test_type: TestType,
         ignore_fields: list[str],
     ) -> TestCase | None:
+        logger = bind_logger(
+            self._logger,
+            target_name=target.name,
+            operation_id=operation.operation_id,
+            payload_source="testcase_generator_build_case",
+        )
+        logger.info(f"Building case for test_type={test_type.value}")
+
         path_params: dict[str, Any] = {}
         query_params: dict[str, Any] = {}
         headers: dict[str, str] = {}
@@ -102,6 +139,7 @@ class TestCaseGenerator:
             if target.auth_bearer_token and operation.auth_required:
                 headers["Authorization"] = f"Bearer {target.auth_bearer_token}"
 
+            logger.info("Built positive testcase.")
             return self._make_case(
                 target_name=target.name,
                 operation=operation,
@@ -126,6 +164,7 @@ class TestCaseGenerator:
             if target.auth_bearer_token and operation.auth_required:
                 headers["Authorization"] = f"Bearer {target.auth_bearer_token}"
 
+            logger.info("Built missing_required testcase.")
             return self._make_case(
                 target_name=target.name,
                 operation=operation,
@@ -151,6 +190,7 @@ class TestCaseGenerator:
             if target.auth_bearer_token and operation.auth_required:
                 headers["Authorization"] = f"Bearer {target.auth_bearer_token}"
 
+            logger.info("Built invalid_type_or_format testcase.")
             return self._make_case(
                 target_name=target.name,
                 operation=operation,
@@ -166,8 +206,10 @@ class TestCaseGenerator:
 
         if test_type == TestType.UNAUTHORIZED:
             if not operation.auth_required:
+                logger.info("Skipped unauthorized testcase because operation does not require auth.")
                 return None
 
+            logger.info("Built unauthorized testcase.")
             return self._make_case(
                 target_name=target.name,
                 operation=operation,
@@ -185,6 +227,7 @@ class TestCaseGenerator:
             mutated_path_params = dict(path_params)
 
             if not mutated_path_params:
+                logger.info("Skipped not_found testcase because there are no path params.")
                 return None
 
             for key in mutated_path_params:
@@ -193,6 +236,7 @@ class TestCaseGenerator:
             if target.auth_bearer_token and operation.auth_required:
                 headers["Authorization"] = f"Bearer {target.auth_bearer_token}"
 
+            logger.info("Built not_found testcase.")
             return self._make_case(
                 target_name=target.name,
                 operation=operation,
@@ -206,6 +250,7 @@ class TestCaseGenerator:
                 expected_response_schema=None,
             )
 
+        logger.warning(f"Unsupported test_type encountered: {test_type}")
         return None
 
     def _make_case(

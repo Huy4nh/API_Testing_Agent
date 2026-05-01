@@ -4,6 +4,7 @@ import re
 
 from api_testing_agent.core.models import HttpMethod, TestPlan, TestType
 from api_testing_agent.core.nl_interpreter import NaturalLanguageInterpreter
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class IntentParseError(ValueError):
@@ -13,6 +14,12 @@ class IntentParseError(ValueError):
 class RuleBasedIntentParser:
     def __init__(self, interpreter: NaturalLanguageInterpreter | None = None) -> None:
         self._interpreter = interpreter or NaturalLanguageInterpreter()
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized RuleBasedIntentParser.",
+            extra={"payload_source": "intent_parser_init"},
+        )
 
     _METHOD_PATTERNS = {
         HttpMethod.GET: r"\bGET\b",
@@ -65,11 +72,19 @@ class RuleBasedIntentParser:
     }
 
     def parse(self, text: str) -> TestPlan:
+        logger = bind_logger(
+            self._logger,
+            payload_source="intent_parser_parse",
+        )
+        logger.info("Starting rule-based intent parsing.")
+
         if not text or not text.strip():
+            logger.warning("Intent parsing failed because input text is empty.")
             raise IntentParseError("Empty request.")
 
         raw = text.strip()
         normalized = self._interpreter.normalize(raw)
+        logger.info("Natural language normalization completed.")
 
         target_name = self._extract_target_name(normalized)
         methods = self._extract_methods(normalized)
@@ -87,6 +102,7 @@ class RuleBasedIntentParser:
                 HttpMethod.PATCH,
                 HttpMethod.DELETE,
             ]
+            logger.info("No explicit methods found. Applied default all-method set.")
 
         if not test_types:
             test_types = [
@@ -96,6 +112,11 @@ class RuleBasedIntentParser:
                 TestType.UNAUTHORIZED,
                 TestType.NOT_FOUND,
             ]
+            logger.info("No explicit test types found. Applied default full test-type set.")
+
+        logger.info(
+            f"Intent parsing completed. target_name={target_name}, methods={len(methods)}, test_types={len(test_types)}, tags={len(tags)}, paths={len(paths)}, ignore_fields={len(ignore_fields)}, limit={limit}"
+        )
 
         return TestPlan(
             target_name=target_name,

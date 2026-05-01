@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from api_testing_agent.logging_config import get_logger
+
 
 @dataclass(frozen=True)
 class FakerOptions:
@@ -14,9 +16,26 @@ class FakerOptions:
 class SchemaFaker:
     def __init__(self, options: FakerOptions | None = None) -> None:
         self._opt = options or FakerOptions()
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized SchemaFaker. include_optional_fields={self._opt.include_optional_fields}, "
+            f"max_depth={self._opt.max_depth}, max_array_items={self._opt.max_array_items}",
+            extra={"payload_source": "schema_faker_init"},
+        )
 
     def example_for_schema(self, schema: dict[str, Any], *, depth: int = 0) -> Any:
+        if depth == 0:
+            self._logger.debug(
+                "Generating example for root schema.",
+                extra={"payload_source": "schema_faker_example_root"},
+            )
+
         if depth > self._opt.max_depth:
+            self._logger.debug(
+                "Schema faker exceeded max depth. Returning None.",
+                extra={"payload_source": "schema_faker_max_depth"},
+            )
             return None
 
         if "example" in schema:
@@ -70,12 +89,18 @@ class SchemaFaker:
         return None
 
     def _example_object(self, schema: dict[str, Any], *, depth: int) -> dict[str, Any]:
-        properties = schema.get("properties") or {}
-        required = schema.get("required") or []
-
-        if not isinstance(properties, dict):
+        raw_properties = schema.get("properties")
+        properties: dict[str, Any]
+        if isinstance(raw_properties, dict):
+            properties = raw_properties
+        else:
             properties = {}
-        if not isinstance(required, list):
+
+        raw_required = schema.get("required")
+        required: list[Any]
+        if isinstance(raw_required, list):
+            required = raw_required
+        else:
             required = []
 
         result: dict[str, Any] = {}
@@ -93,8 +118,14 @@ class SchemaFaker:
         return result
 
     def _example_array(self, schema: dict[str, Any], *, depth: int) -> list[Any]:
-        items = schema.get("items") or {}
-        if not isinstance(items, dict):
+        raw_items = schema.get("items")
+        items: dict[str, Any]
+        if isinstance(raw_items, dict):
+            items = raw_items
+        else:
+            items = {}
+
+        if not items:
             return []
 
         return [
@@ -133,12 +164,36 @@ class SchemaFaker:
     def _merge_object_schemas(self, a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
         result = dict(a)
 
-        props_a = result.get("properties") if isinstance(result.get("properties"), dict) else {}
-        props_b = b.get("properties") if isinstance(b.get("properties"), dict) else {}
+        raw_props_a = result.get("properties")
+        props_a: dict[str, Any]
+        if isinstance(raw_props_a, dict):
+            props_a = raw_props_a
+        else:
+            props_a = {}
+
+        raw_props_b = b.get("properties")
+        props_b: dict[str, Any]
+        if isinstance(raw_props_b, dict):
+            props_b = raw_props_b
+        else:
+            props_b = {}
+
         result["properties"] = {**props_a, **props_b}
 
-        req_a = result.get("required") if isinstance(result.get("required"), list) else []
-        req_b = b.get("required") if isinstance(b.get("required"), list) else []
+        raw_req_a = result.get("required")
+        req_a: list[Any]
+        if isinstance(raw_req_a, list):
+            req_a = raw_req_a
+        else:
+            req_a = []
+
+        raw_req_b = b.get("required")
+        req_b: list[Any]
+        if isinstance(raw_req_b, list):
+            req_b = raw_req_b
+        else:
+            req_b = []
+
         result["required"] = sorted(set([*req_a, *req_b]))
 
         for key, value in b.items():

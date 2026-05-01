@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from api_testing_agent.core.execution_models import ExecutionCaseResult
 
 
@@ -32,6 +30,15 @@ class ExecutionLogFormatter:
         lines.append(f"  actual: {result.actual_status}")
         lines.append(f"  time_ms: {result.response_time_ms:.2f}")
         lines.append(f"  network_error: {result.network_error}")
+
+        if result.payload_source:
+            lines.append(f"  payload_source: {result.payload_source}")
+
+        if result.planner_reason:
+            lines.append(f"  planner_reason: {result.planner_reason}")
+
+        if result.planner_confidence is not None:
+            lines.append(f"  planner_confidence: {result.planner_confidence:.2f}")
 
         if result.skip:
             lines.append("  skip: true")

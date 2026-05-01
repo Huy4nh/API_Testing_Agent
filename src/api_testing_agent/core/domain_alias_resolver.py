@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass, field
 
 from api_testing_agent.core.models import HttpMethod
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 @dataclass(frozen=True)
@@ -27,30 +28,56 @@ class ResolvedDomainIntent:
 class DomainAliasResolver:
     def __init__(self, rules: list[DomainAliasRule] | None = None) -> None:
         self._rules = rules if rules is not None else self._default_rules()
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized DomainAliasResolver with rules_count={len(self._rules)}.",
+            extra={"payload_source": "domain_alias_init"},
+        )
 
     @classmethod
     def empty(cls) -> "DomainAliasResolver":
+        logger = get_logger(__name__)
+        logger.info(
+            "Creating empty DomainAliasResolver.",
+            extra={"payload_source": "domain_alias_empty"},
+        )
         return cls(rules=[])
 
     def resolve(self, searchable_text: str) -> ResolvedDomainIntent:
+        logger = bind_logger(
+            self._logger,
+            payload_source="domain_alias_resolve",
+        )
+        logger.info("Starting domain alias resolution.")
+
         tags: list[str] = []
         paths: list[str] = []
         methods: list[HttpMethod] = []
         extra_tokens: list[str] = []
 
+        matched_rule_names: list[str] = []
+
         for rule in self._rules:
             if self._matches_any(rule.patterns, searchable_text):
+                matched_rule_names.append(rule.name)
                 tags.extend(rule.tags)
                 paths.extend(rule.paths)
                 methods.extend(rule.methods)
                 extra_tokens.extend(rule.extra_tokens)
 
-        return ResolvedDomainIntent(
+        result = ResolvedDomainIntent(
             tags=self._unique_preserve_order(tags),
             paths=self._unique_preserve_order(paths),
             methods=self._unique_preserve_order(methods),
             extra_tokens=self._unique_preserve_order(extra_tokens),
         )
+
+        logger.info(
+            f"Domain alias resolution completed. matched_rules={matched_rule_names}, tags={len(result.tags)}, paths={len(result.paths)}, methods={len(result.methods)}, extra_tokens={len(result.extra_tokens)}"
+        )
+
+        return result
 
     def _matches_any(self, patterns: list[str], searchable_text: str) -> bool:
         for pattern in patterns:

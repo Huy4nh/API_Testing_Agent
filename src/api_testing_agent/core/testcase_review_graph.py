@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -9,9 +9,11 @@ from langgraph.types import interrupt
 from api_testing_agent.core.ai_testcase_agent import AITestCaseAgent
 from api_testing_agent.core.feedback_scope_refiner import FeedbackScopeRefiner
 from api_testing_agent.core.reporter.testcase import TestcaseDraftReporter
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
-class TestcaseReviewState(TypedDict, total=False):
+class TestcaseReviewState(TypedDict):
+    # ===== Required keys: luôn có từ initial_state =====
     thread_id: str
     user_request_text: str
     canonical_command: str
@@ -19,23 +21,24 @@ class TestcaseReviewState(TypedDict, total=False):
     target_name: str
     plan: dict[str, Any]
 
-    all_operation_contexts: list[dict]
-    operation_contexts: list[dict]
+    all_operation_contexts: list[dict[str, Any]]
+    operation_contexts: list[dict[str, Any]]
 
     feedback_history: list[str]
     review_round: int
     scope_note: str | None
 
-    draft_groups: list[dict[str, Any]]
-    draft_preview: str
-    draft_report_json_path: str
-    draft_report_md_path: str
-
-    review_action: str
-    latest_feedback: str
-
     approved: bool
     cancelled: bool
+
+    # ===== Optional keys: được sinh dần trong graph =====
+    draft_groups: NotRequired[list[dict[str, Any]]]
+    draft_preview: NotRequired[str]
+    draft_report_json_path: NotRequired[str]
+    draft_report_md_path: NotRequired[str]
+
+    review_action: NotRequired[str]
+    latest_feedback: NotRequired[str]
 
 
 def build_testcase_review_graph(
@@ -44,16 +47,40 @@ def build_testcase_review_graph(
     feedback_scope_refiner: FeedbackScopeRefiner | None = None,
     checkpointer: Any | None = None,
 ):
+    base_logger = get_logger(__name__)
+
     if checkpointer is None:
         checkpointer = InMemorySaver()
 
+    def _state_logger(
+        state: TestcaseReviewState,
+        *,
+        payload_source: str,
+        operation_id: str | None = None,
+    ):
+        return bind_logger(
+            base_logger,
+            thread_id=str(state.get("thread_id", "-")),
+            target_name=str(state.get("target_name", "-")),
+            operation_id=operation_id or "-",
+            payload_source=payload_source,
+        )
+
     def generate_draft_node(state: TestcaseReviewState) -> dict[str, Any]:
+        logger = _state_logger(state, payload_source="review_generate_draft")
+        logger.info("Starting generate_draft_node.")
+
         current_operation_contexts = list(state.get("operation_contexts", []))
         all_operation_contexts = list(state.get("all_operation_contexts", current_operation_contexts))
         scope_note = state.get("scope_note")
         canonical_command = state.get("canonical_command", "")
 
+        logger.info(
+            f"Initial scope contains {len(current_operation_contexts)} operation(s)."
+        )
+
         if feedback_scope_refiner is not None:
+            logger.info("Running feedback scope refiner.")
             refined_scope = feedback_scope_refiner.refine(
                 target_name=state["target_name"],
                 current_operation_contexts=current_operation_contexts,
@@ -63,6 +90,10 @@ def build_testcase_review_graph(
             current_operation_contexts = refined_scope.operation_contexts
             scope_note = refined_scope.scope_note
 
+            logger.info(
+                f"Scope refinement completed. Refined scope contains {len(current_operation_contexts)} operation(s)."
+            )
+
         # Đồng bộ canonical command theo scope hiện tại
         canonical_command = _build_canonical_command_from_scope(
             target_name=state["target_name"],
@@ -70,9 +101,20 @@ def build_testcase_review_graph(
             plan=state["plan"],
         )
 
+        logger.info(f"Canonical command rebuilt: {canonical_command}")
+
         draft_groups: list[dict[str, Any]] = []
 
         for operation_ctx in current_operation_contexts:
+            operation_logger = _state_logger(
+                state,
+                payload_source="review_generate_operation_draft",
+                operation_id=str(operation_ctx.get("operation_id", "-")),
+            )
+            operation_logger.info(
+                f"Generating testcase draft for {operation_ctx.get('method', '-')} {operation_ctx.get('path', '-')}"
+            )
+
             context = {
                 "target_name": state["target_name"],
                 "original_user_text": state["user_request_text"],
@@ -94,6 +136,10 @@ def build_testcase_review_graph(
 
             draft_list = agent.generate_for_operation(context)
 
+            operation_logger.info(
+                f"Generated {len(draft_list.cases)} testcase(s) for operation."
+            )
+
             draft_groups.append(
                 {
                     "operation_id": operation_ctx["operation_id"],
@@ -104,6 +150,7 @@ def build_testcase_review_graph(
             )
 
         round_no = int(state.get("review_round", 0)) + 1
+        logger.info(f"Writing testcase draft report for round={round_no}.")
 
         report = draft_reporter.write(
             thread_id=state["thread_id"],
@@ -119,6 +166,10 @@ def build_testcase_review_graph(
             scope_note=scope_note,
         )
 
+        logger.info(
+            f"Draft report written. json_path={report.json_path}, md_path={report.markdown_path}"
+        )
+
         return {
             "canonical_command": canonical_command,
             "operation_contexts": current_operation_contexts,
@@ -131,6 +182,9 @@ def build_testcase_review_graph(
         }
 
     def review_gate_node(state: TestcaseReviewState) -> dict[str, Any]:
+        logger = _state_logger(state, payload_source="review_gate")
+        logger.info("Entering review_gate_node and waiting for human decision.")
+
         decision = interrupt(
             {
                 "kind": "testcase_review",
@@ -153,9 +207,12 @@ def build_testcase_review_graph(
         action = str(decision.get("action", "revise")).strip().lower()
         feedback = str(decision.get("feedback", "")).strip()
 
+        logger.info(f"Review decision received. action={action}")
+
         history = list(state.get("feedback_history", []))
         if action == "revise" and feedback:
             history.append(feedback)
+            logger.info("Feedback appended to history.")
 
         return {
             "review_action": action,
@@ -164,17 +221,27 @@ def build_testcase_review_graph(
         }
 
     def mark_approved_node(state: TestcaseReviewState) -> dict[str, Any]:
+        logger = _state_logger(state, payload_source="review_mark_approved")
+        logger.info("Marking review as approved.")
         return {"approved": True, "cancelled": False}
 
     def mark_cancelled_node(state: TestcaseReviewState) -> dict[str, Any]:
+        logger = _state_logger(state, payload_source="review_mark_cancelled")
+        logger.info("Marking review as cancelled.")
         return {"approved": False, "cancelled": True}
 
     def route_after_review(state: TestcaseReviewState) -> str:
+        logger = _state_logger(state, payload_source="review_route_after_review")
+
         action = str(state.get("review_action", "revise")).strip().lower()
         if action == "approve":
+            logger.info("Routing to mark_approved.")
             return "mark_approved"
         if action == "cancel":
+            logger.info("Routing to mark_cancelled.")
             return "mark_cancelled"
+
+        logger.info("Routing back to generate_draft for another round.")
         return "generate_draft"
 
     builder = StateGraph(TestcaseReviewState)
@@ -196,6 +263,11 @@ def build_testcase_review_graph(
     )
     builder.add_edge("mark_approved", END)
     builder.add_edge("mark_cancelled", END)
+
+    base_logger.info(
+        "Compiled testcase review graph.",
+        extra={"payload_source": "review_graph_compile"},
+    )
 
     return builder.compile(checkpointer=checkpointer)
 

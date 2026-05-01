@@ -1,0 +1,43 @@
+7. Danh sách file cuối cùng tôi khuyên nên có log
+
+Đây là full list thực tế đáng làm cho hệ thống của bạn.
+
+Workflow
+    src/api_testing_agent/main.py
+    src/api_testing_agent/tasks/orchestrator.py
+    src/api_testing_agent/manual_test/generate_testcase/manual_review_workflow_test.py
+    src/api_testing_agent/manual_test/execute_testcase/manual_review_workflow_test.py
+    src/api_testing_agent/bot/telegram_bot.py
+Understanding / target / scope
+    src/api_testing_agent/core/request_understanding_service.py
+    src/api_testing_agent/core/target_resolution_agent.py
+    src/api_testing_agent/core/target_candidate_service.py
+    src/api_testing_agent/core/target_registry.py
+    src/api_testing_agent/core/dynamic_target_resolver.py
+    src/api_testing_agent/core/domain_alias_resolver.py
+    src/api_testing_agent/core/target_disambiguation_agent.py
+    src/api_testing_agent/core/scope_resolution_agent.py
+    src/api_testing_agent/core/feedback_scope_agent.py
+    src/api_testing_agent/core/feedback_scope_refiner.py
+Review / testcase generation
+    src/api_testing_agent/core/testcase_review_graph.py
+    src/api_testing_agent/core/ai_testcase_agent.py
+    src/api_testing_agent/core/testcase_generator.py
+    src/api_testing_agent/core/testcase_normalizer.py
+    src/api_testing_agent/core/reporter/testcase/testcase_reporter.py
+OpenAPI / ingestion
+    src/api_testing_agent/core/openapi_ingestor.py
+    src/api_testing_agent/core/openapi_ref_resolver.py
+    src/api_testing_agent/core/operation_semantic_index.py
+Execution / planning
+    src/api_testing_agent/core/execution_engine.py
+    src/api_testing_agent/core/request_runtime_builder.py
+    src/api_testing_agent/core/runtime_json_body_resolver.py
+    src/api_testing_agent/core/runtime_payload_planning_graph.py
+    src/api_testing_agent/core/ai_payload_planner_service.py
+    src/api_testing_agent/core/runtime_payload_mutator.py
+    src/api_testing_agent/core/auth_header_builder.py
+    src/api_testing_agent/core/unknown_output_description_service.py
+Validation / persistence
+    src/api_testing_agent/core/validator.py
+    src/api_testing_agent/db/sqlite_store.py

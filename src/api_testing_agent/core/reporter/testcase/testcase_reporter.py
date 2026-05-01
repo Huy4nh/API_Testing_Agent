@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from api_testing_agent.logging_config import bind_logger, get_logger
+
 
 @dataclass(frozen=True)
 class TestcaseDraftReport:
@@ -20,6 +22,12 @@ class TestcaseDraftReporter:
     def __init__(self, output_dir: str, subdir: str = "testcase_drafts") -> None:
         self._root_dir = Path(output_dir) / subdir
         self._root_dir.mkdir(parents=True, exist_ok=True)
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized TestcaseDraftReporter at root_dir={self._root_dir}.",
+            extra={"payload_source": "testcase_reporter_init"},
+        )
 
     def write(
         self,
@@ -36,6 +44,14 @@ class TestcaseDraftReporter:
         operation_contexts: list[dict[str, Any]],
         scope_note: str | None = None,
     ) -> TestcaseDraftReport:
+        logger = bind_logger(
+            self._logger,
+            thread_id=thread_id,
+            target_name=target_name,
+            payload_source="testcase_reporter_write",
+        )
+        logger.info(f"Writing testcase draft report for round={round_number}")
+
         preview_text = self.build_preview_text(
             round_number=round_number,
             original_user_text=original_user_text,
@@ -89,6 +105,8 @@ class TestcaseDraftReporter:
             ),
             encoding="utf-8",
         )
+
+        logger.info(f"Testcase draft report written successfully. json_path={json_path}, md_path={md_path}")
 
         return TestcaseDraftReport(
             thread_id=thread_id,
@@ -173,7 +191,6 @@ class TestcaseDraftReporter:
 
             lines.append("")
 
-        # lines.append("Approve/revise/cancel sẽ được xử lý ở bước review, chưa execute thật.")
         return "\n".join(lines)
 
     def _build_markdown(

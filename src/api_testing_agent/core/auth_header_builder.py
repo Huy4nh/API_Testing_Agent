@@ -2,8 +2,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from api_testing_agent.logging_config import bind_logger, get_logger
+
 
 class AuthHeaderBuilder:
+    def __init__(self) -> None:
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized AuthHeaderBuilder.",
+            extra={"payload_source": "auth_header_builder_init"},
+        )
+
     def build(
         self,
         *,
@@ -11,6 +21,16 @@ class AuthHeaderBuilder:
         operation_context: dict[str, Any],
         case: dict[str, Any],
     ) -> dict[str, str]:
+        operation_id = str(operation_context.get("operation_id", "-"))
+        test_type = str(case.get("test_type", "")).strip().lower()
+
+        logger = bind_logger(
+            self._logger,
+            operation_id=operation_id,
+            payload_source="auth_header_build",
+        )
+        logger.info(f"Building auth headers. test_type={test_type}")
+
         headers: dict[str, str] = {}
 
         default_headers = self._extract_default_headers(target)
@@ -21,18 +41,22 @@ class AuthHeaderBuilder:
             for key, value in case_headers.items():
                 headers[str(key)] = str(value)
 
-        test_type = str(case.get("test_type", "")).strip().lower()
         auth_required = bool(operation_context.get("auth_required", False))
 
         if test_type == "unauthorized_or_forbidden":
             headers.pop("Authorization", None)
+            logger.info("Removed Authorization header for unauthorized_or_forbidden testcase.")
             return headers
 
         if auth_required and "Authorization" not in headers:
             token = self._extract_bearer_token(target)
             if token:
                 headers["Authorization"] = f"Bearer {token}"
+                logger.info("Injected bearer token into Authorization header.")
+            else:
+                logger.warning("Operation requires auth but no bearer token was found in target.")
 
+        logger.info(f"Auth header build completed. header_count={len(headers)}")
         return headers
 
     def _extract_default_headers(self, target: Any) -> dict[str, str]:

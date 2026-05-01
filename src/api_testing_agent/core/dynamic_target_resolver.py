@@ -6,24 +6,41 @@ import re
 import unicodedata
 from pathlib import Path
 
+from api_testing_agent.logging_config import bind_logger, get_logger
+
 
 class DynamicTargetResolver:
     def __init__(self, alias_to_target: dict[str, str], enabled_target_names: list[str]) -> None:
         self._alias_to_target = alias_to_target
         self._enabled_target_names = enabled_target_names
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized DynamicTargetResolver with alias_count={len(self._alias_to_target)} and enabled_target_count={len(self._enabled_target_names)}.",
+            extra={"payload_source": "dynamic_target_init"},
+        )
 
     @classmethod
     def from_targets_file(cls, path: str) -> "DynamicTargetResolver":
+        logger = bind_logger(
+            get_logger(__name__),
+            payload_source="dynamic_target_from_file",
+        )
+        logger.info(f"Loading DynamicTargetResolver from path={path}")
+
         p = Path(path)
         if not p.exists():
+            logger.warning("Targets file not found. Returning empty resolver.")
             return cls.empty()
 
         try:
             raw = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
+            logger.exception("Failed to parse targets file JSON. Returning empty resolver.")
             return cls.empty()
 
         if not isinstance(raw, list):
+            logger.warning("Targets file root is not a list. Returning empty resolver.")
             return cls.empty()
 
         enabled_targets: list[dict] = []
@@ -38,6 +55,7 @@ class DynamicTargetResolver:
             enabled_targets.append(item)
 
         if not enabled_targets:
+            logger.warning("No enabled targets found in targets file. Returning empty resolver.")
             return cls.empty()
 
         alias_to_targets: dict[str, set[str]] = {}
@@ -58,19 +76,40 @@ class DynamicTargetResolver:
             if len(target_names) == 1:
                 unique_alias_map[alias] = next(iter(target_names))
 
+        logger.info(
+            f"Built DynamicTargetResolver from file successfully. enabled_targets={len(enabled_names)}, unique_aliases={len(unique_alias_map)}"
+        )
+
         return cls(unique_alias_map, enabled_names)
 
     @classmethod
     def from_env_or_default(cls) -> "DynamicTargetResolver":
         path = os.getenv("TARGET_REGISTRY_PATH", "./targets.json")
+        logger = bind_logger(
+            get_logger(__name__),
+            payload_source="dynamic_target_from_env",
+        )
+        logger.info(f"Loading DynamicTargetResolver from env/default path={path}")
         return cls.from_targets_file(path)
 
     @classmethod
     def empty(cls) -> "DynamicTargetResolver":
+        logger = get_logger(__name__)
+        logger.info(
+            "Creating empty DynamicTargetResolver.",
+            extra={"payload_source": "dynamic_target_empty"},
+        )
         return cls(alias_to_target={}, enabled_target_names=[])
 
     def resolve(self, text: str) -> str | None:
+        logger = bind_logger(
+            self._logger,
+            payload_source="dynamic_target_resolve",
+        )
+        logger.info("Starting dynamic target resolution.")
+
         if not text or not text.strip():
+            logger.warning("Dynamic target resolution received empty text.")
             return None
 
         searchable = self.to_searchable_text(text)
@@ -79,14 +118,18 @@ class DynamicTargetResolver:
         for target_name in self._enabled_target_names:
             normalized_target_name = self.to_searchable_text(target_name)
             if self._contains_phrase(searchable, normalized_target_name):
+                logger.info(f"Resolved target by exact target-name phrase match: {target_name}")
                 return target_name
 
         # Sau đó mới match alias dài nhất trước
         sorted_aliases = sorted(self._alias_to_target.keys(), key=len, reverse=True)
         for alias in sorted_aliases:
             if self._contains_phrase(searchable, alias):
-                return self._alias_to_target[alias]
+                resolved_target = self._alias_to_target[alias]
+                logger.info(f"Resolved target by alias match: alias={alias}, target={resolved_target}")
+                return resolved_target
 
+        logger.info("Dynamic target resolution returned no match.")
         return None
 
     @staticmethod

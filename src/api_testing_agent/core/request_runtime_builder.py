@@ -5,11 +5,27 @@ from typing import Any
 
 from api_testing_agent.core.auth_header_builder import AuthHeaderBuilder
 from api_testing_agent.core.execution_models import RuntimeRequest
+from api_testing_agent.core.runtime_json_body_resolver import RuntimeJsonBodyResolver
+from api_testing_agent.core.schema_faker import SchemaFaker
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class RequestRuntimeBuilder:
-    def __init__(self, auth_header_builder: AuthHeaderBuilder | None = None) -> None:
+    def __init__(
+        self,
+        auth_header_builder: AuthHeaderBuilder | None = None,
+        json_body_resolver: RuntimeJsonBodyResolver | None = None,
+        schema_faker: SchemaFaker | None = None,
+    ) -> None:
         self._auth_header_builder = auth_header_builder or AuthHeaderBuilder()
+        self._json_body_resolver = json_body_resolver or RuntimeJsonBodyResolver()
+        self._faker = schema_faker or SchemaFaker()
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized RequestRuntimeBuilder.",
+            extra={"payload_source": "request_runtime_builder_init"},
+        )
 
     def build(
         self,
@@ -25,6 +41,16 @@ class RequestRuntimeBuilder:
             operation_context=operation_context,
             case_index=case_index,
         )
+        operation_id = str(operation_context.get("operation_id", ""))
+        logger = bind_logger(
+            self._logger,
+            target_name=target_name,
+            operation_id=operation_id,
+            testcase_id=testcase_id,
+            payload_source="request_runtime_build",
+        )
+        logger.info("Starting runtime request build.")
+
         logical_case_name = str(case.get("description") or f"case_{case_index}")
 
         skip = bool(case.get("skip", False))
@@ -40,25 +66,37 @@ class RequestRuntimeBuilder:
             explicit_path_params=explicit_path_params,
         )
 
-        # Nếu case là skip:
-        # - không synthesize query/body nữa
-        # - chỉ giữ explicit values nếu AI draft đã đưa sẵn
+        planner_reason: str | None = None
+        planner_confidence: float | None = None
+        payload_source: str | None = None
+
         if skip:
+            logger.info("Case marked as skip. Using explicit payload/query values only.")
             query_params = (
                 copy.deepcopy(explicit_query_params)
                 if isinstance(explicit_query_params, dict)
                 else {}
             )
             json_body = copy.deepcopy(explicit_json_body) if explicit_json_body is not None else None
+            payload_source = "skipped_case"
         else:
             query_params = self._build_query_params(
                 operation_context=operation_context,
                 explicit_query_params=explicit_query_params,
             )
-            json_body = self._build_json_body(
+
+            resolved_json_body = self._json_body_resolver.resolve(
                 operation_context=operation_context,
                 case=case,
                 explicit_json_body=explicit_json_body,
+            )
+            json_body = resolved_json_body.value
+            planner_reason = resolved_json_body.planner_reason
+            planner_confidence = resolved_json_body.planner_confidence
+            payload_source = resolved_json_body.source
+
+            logger.info(
+                f"Resolved JSON body. payload_source={payload_source}, planner_confidence={planner_confidence}"
             )
 
         headers = self._auth_header_builder.build(
@@ -76,11 +114,15 @@ class RequestRuntimeBuilder:
         expected_statuses = self._normalize_expected_statuses(case.get("expected_status_codes"))
         test_type = str(case.get("test_type", "")).strip().lower()
 
+        logger.info(
+            f"Runtime request build completed. skip={skip}, final_url={final_url}, query_params_count={len(query_params)}, header_count={len(headers)}"
+        )
+
         return RuntimeRequest(
             testcase_id=testcase_id,
             logical_case_name=logical_case_name,
             target_name=target_name,
-            operation_id=str(operation_context.get("operation_id", "")),
+            operation_id=operation_id,
             method=str(operation_context.get("method", "")).upper(),
             path=str(operation_context.get("path", "")),
             final_url=final_url,
@@ -91,6 +133,9 @@ class RequestRuntimeBuilder:
             test_type=test_type,
             skip=skip,
             skip_reason=skip_reason,
+            planner_reason=planner_reason,
+            planner_confidence=planner_confidence,
+            payload_source=payload_source,
         )
 
     def _extract_testcase_id(
@@ -154,7 +199,7 @@ class RequestRuntimeBuilder:
             if test_type == "resource_not_found" and self._looks_like_resource_identifier(name):
                 result[name] = self._not_found_value_for_schema(schema)
             else:
-                result[name] = self._example_for_schema(schema)
+                result[name] = self._faker.example_for_schema(schema)
 
         return result
 
@@ -179,47 +224,9 @@ class RequestRuntimeBuilder:
 
             name = str(parameter.get("name", ""))
             schema = parameter.get("schema") if isinstance(parameter.get("schema"), dict) else {}
-            result[name] = self._example_for_schema(schema)
+            result[name] = self._faker.example_for_schema(schema)
 
         return result
-
-    def _build_json_body(
-        self,
-        *,
-        operation_context: dict[str, Any],
-        case: dict[str, Any],
-        explicit_json_body: Any,
-    ) -> Any | None:
-        if explicit_json_body is not None:
-            return copy.deepcopy(explicit_json_body)
-
-        request_body = operation_context.get("request_body")
-        if not isinstance(request_body, dict):
-            return None
-
-        content_type = str(request_body.get("content_type", ""))
-        if content_type != "application/json":
-            return None
-
-        schema = request_body.get("schema") if isinstance(request_body.get("schema"), dict) else {}
-        if not schema:
-            return None
-
-        test_type = str(case.get("test_type", "")).strip().lower()
-
-        valid_body = self._example_for_schema(schema)
-
-        if test_type == "missing_required" and isinstance(valid_body, dict):
-            mutated = copy.deepcopy(valid_body)
-            required_fields = schema.get("required") or []
-            if isinstance(required_fields, list) and required_fields:
-                mutated.pop(str(required_fields[0]), None)
-            return mutated
-
-        if test_type == "invalid_type_or_format" and isinstance(valid_body, dict):
-            return self._mutate_one_invalid_field(valid_body, schema)
-
-        return valid_body
 
     def _normalize_expected_statuses(self, raw: Any) -> list[int]:
         if not isinstance(raw, list):
@@ -254,115 +261,3 @@ class RequestRuntimeBuilder:
                 return "ffffffff-ffff-ffff-ffff-ffffffffffff"
             return "non-existent-resource"
         return 999999999
-
-    def _example_for_schema(self, schema: dict[str, Any], depth: int = 0) -> Any:
-        if depth > 5:
-            return None
-
-        if "example" in schema:
-            return schema["example"]
-        if "default" in schema:
-            return schema["default"]
-        if "enum" in schema and isinstance(schema["enum"], list) and schema["enum"]:
-            return schema["enum"][0]
-
-        schema_type = schema.get("type")
-
-        if isinstance(schema_type, list):
-            non_null = [item for item in schema_type if item != "null"]
-            schema_type = non_null[0] if non_null else schema_type[0]
-
-        if schema_type == "object" or (schema_type is None and "properties" in schema):
-            result: dict[str, Any] = {}
-            properties = schema.get("properties") or {}
-            if not isinstance(properties, dict):
-                return result
-
-            for field_name, field_schema in properties.items():
-                if not isinstance(field_schema, dict):
-                    continue
-                result[str(field_name)] = self._example_for_schema(field_schema, depth + 1)
-
-            return result
-
-        if schema_type == "array":
-            items = schema.get("items")
-            if isinstance(items, dict):
-                return [self._example_for_schema(items, depth + 1)]
-            return []
-
-        if schema_type == "string":
-            fmt = schema.get("format")
-            if fmt == "email":
-                return "user@example.com"
-            if fmt == "uuid":
-                return "00000000-0000-0000-0000-000000000000"
-            if fmt in {"date-time", "datetime"}:
-                return "2020-01-01T00:00:00Z"
-            if fmt == "date":
-                return "2020-01-01"
-            if fmt == "uri":
-                return "https://example.com/resource"
-            return "string"
-
-        if schema_type == "integer":
-            minimum = schema.get("minimum")
-            if isinstance(minimum, (int, float)):
-                return int(minimum)
-            return 1
-
-        if schema_type == "number":
-            minimum = schema.get("minimum")
-            if isinstance(minimum, (int, float)):
-                return float(minimum)
-            return 1.0
-
-        if schema_type == "boolean":
-            return True
-
-        return None
-
-    def _mutate_one_invalid_field(
-        self,
-        body: dict[str, Any],
-        schema: dict[str, Any],
-    ) -> dict[str, Any]:
-        properties = schema.get("properties") or {}
-        if not isinstance(properties, dict):
-            return body
-
-        mutated = copy.deepcopy(body)
-
-        for field_name, field_schema in properties.items():
-            if field_name not in mutated:
-                continue
-            if not isinstance(field_schema, dict):
-                continue
-
-            field_type = field_schema.get("type")
-
-            if field_type == "string":
-                mutated[field_name] = 12345
-                return mutated
-
-            if field_type == "integer":
-                mutated[field_name] = "invalid_integer"
-                return mutated
-
-            if field_type == "number":
-                mutated[field_name] = "invalid_number"
-                return mutated
-
-            if field_type == "boolean":
-                mutated[field_name] = "invalid_boolean"
-                return mutated
-
-            if field_type == "array":
-                mutated[field_name] = "not_an_array"
-                return mutated
-
-            if field_type == "object":
-                mutated[field_name] = "not_an_object"
-                return mutated
-
-        return mutated

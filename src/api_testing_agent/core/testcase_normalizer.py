@@ -4,6 +4,7 @@ import uuid
 
 from api_testing_agent.core.ai_testcase_models import AITestCaseDraft
 from api_testing_agent.core.models import ApiTarget, OpenApiOperation, TestCase, TestType
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class TestCaseNormalizationError(ValueError):
@@ -19,6 +20,14 @@ class TestCaseNormalizer:
         "resource_not_found": TestType.NOT_FOUND,
     }
 
+    def __init__(self) -> None:
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized TestCaseNormalizer.",
+            extra={"payload_source": "testcase_normalizer_init"},
+        )
+
     def normalize(
         self,
         *,
@@ -27,10 +36,20 @@ class TestCaseNormalizer:
         draft: AITestCaseDraft,
         ignore_fields: list[str] | None = None,
     ) -> TestCase | None:
+        logger = bind_logger(
+            self._logger,
+            target_name=target.name,
+            operation_id=operation.operation_id,
+            payload_source="testcase_normalize",
+        )
+        logger.info(f"Starting testcase normalization for draft_test_type={draft.test_type}")
+
         if draft.skip:
+            logger.info("Draft marked as skip. Returning None.")
             return None
 
         if draft.test_type not in self._TYPE_MAP:
+            logger.error(f"Unknown test_type encountered during normalization: {draft.test_type}")
             raise TestCaseNormalizationError(f"Unknown test_type: {draft.test_type}")
 
         test_type = self._TYPE_MAP[draft.test_type]
@@ -60,6 +79,8 @@ class TestCaseNormalizer:
             if test_type == TestType.POSITIVE
             else None
         )
+
+        logger.info(f"Testcase normalization completed. normalized_test_type={test_type.value}")
 
         return TestCase(
             id=str(uuid.uuid4()),

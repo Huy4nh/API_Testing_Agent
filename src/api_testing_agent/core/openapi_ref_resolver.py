@@ -3,6 +3,8 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from api_testing_agent.logging_config import bind_logger, get_logger
+
 
 class OpenApiRefResolverError(ValueError):
     pass
@@ -11,13 +13,26 @@ class OpenApiRefResolverError(ValueError):
 class OpenApiRefResolver:
     def __init__(self, spec: dict[str, Any]) -> None:
         self._spec = spec
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized OpenApiRefResolver.",
+            extra={"payload_source": "openapi_ref_resolver_init"},
+        )
 
     def resolve_parameter_obj(self, parameter_obj: dict[str, Any]) -> dict[str, Any]:
         if "$ref" not in parameter_obj:
             return copy.deepcopy(parameter_obj)
 
+        logger = bind_logger(
+            self._logger,
+            payload_source="openapi_ref_resolve_parameter",
+        )
+        logger.info(f"Resolving parameter ref={parameter_obj.get('$ref')}")
+
         resolved = self._resolve_ref_object(parameter_obj["$ref"])
         if not isinstance(resolved, dict):
+            logger.error("Referenced parameter is not an object.")
             raise OpenApiRefResolverError(
                 f"Referenced parameter is not an object: {parameter_obj['$ref']}"
             )
@@ -34,8 +49,15 @@ class OpenApiRefResolver:
         if "$ref" not in request_body_obj:
             return copy.deepcopy(request_body_obj)
 
+        logger = bind_logger(
+            self._logger,
+            payload_source="openapi_ref_resolve_request_body",
+        )
+        logger.info(f"Resolving requestBody ref={request_body_obj.get('$ref')}")
+
         resolved = self._resolve_ref_object(request_body_obj["$ref"])
         if not isinstance(resolved, dict):
+            logger.error("Referenced requestBody is not an object.")
             raise OpenApiRefResolverError(
                 f"Referenced requestBody is not an object: {request_body_obj['$ref']}"
             )
@@ -52,8 +74,15 @@ class OpenApiRefResolver:
         if "$ref" not in response_obj:
             return copy.deepcopy(response_obj)
 
+        logger = bind_logger(
+            self._logger,
+            payload_source="openapi_ref_resolve_response",
+        )
+        logger.info(f"Resolving response ref={response_obj.get('$ref')}")
+
         resolved = self._resolve_ref_object(response_obj["$ref"])
         if not isinstance(resolved, dict):
+            logger.error("Referenced response is not an object.")
             raise OpenApiRefResolverError(
                 f"Referenced response is not an object: {response_obj['$ref']}"
             )
@@ -78,14 +107,23 @@ class OpenApiRefResolver:
 
         if "$ref" in schema:
             ref = schema["$ref"]
+            logger = bind_logger(
+                self._logger,
+                payload_source="openapi_ref_resolve_schema",
+            )
+            logger.info(f"Resolving schema ref={ref}")
+
             if not isinstance(ref, str):
+                logger.error("Schema $ref is not a string.")
                 raise OpenApiRefResolverError("Schema $ref must be a string.")
 
             if ref in seen_refs:
+                logger.error(f"Circular schema ref detected: {ref}")
                 raise OpenApiRefResolverError(f"Circular $ref detected: {ref}")
 
             resolved = self._resolve_ref_object(ref)
             if not isinstance(resolved, dict):
+                logger.error(f"Resolved schema ref is not an object: {ref}")
                 raise OpenApiRefResolverError(f"Resolved $ref is not an object: {ref}")
 
             merged = copy.deepcopy(resolved)
@@ -129,7 +167,13 @@ class OpenApiRefResolver:
         return resolved_schema
 
     def _resolve_ref_object(self, ref: str) -> Any:
+        logger = bind_logger(
+            self._logger,
+            payload_source="openapi_ref_resolve_object",
+        )
+
         if not ref.startswith("#/"):
+            logger.error(f"Unsupported non-internal ref: {ref}")
             raise OpenApiRefResolverError(f"Only internal $ref is supported right now: {ref}")
 
         parts = ref[2:].split("/")
@@ -138,6 +182,7 @@ class OpenApiRefResolver:
         for part in parts:
             part = part.replace("~1", "/").replace("~0", "~")
             if not isinstance(current, dict) or part not in current:
+                logger.error(f"Cannot resolve ref path: {ref}")
                 raise OpenApiRefResolverError(f"Cannot resolve $ref: {ref}")
             current = current[part]
 

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Iterable
 
+from api_testing_agent.logging_config import bind_logger, get_logger
+
 
 @dataclass(frozen=True)
 class CandidateScore:
@@ -36,13 +38,28 @@ class TargetCandidateService:
 
     def __init__(self, enabled_target_names: Iterable[str]) -> None:
         self._enabled_target_names = list(dict.fromkeys(enabled_target_names))
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized TargetCandidateService with enabled_target_count={len(self._enabled_target_names)}.",
+            extra={"payload_source": "target_candidate_init"},
+        )
 
     def find_candidates(self, text: str) -> list[CandidateScore]:
+        logger = bind_logger(
+            self._logger,
+            payload_source="target_candidate_find",
+        )
+        logger.info("Starting candidate search.")
+
         lowered = text.lower().strip()
         if not lowered:
+            logger.warning("Candidate search received empty text.")
             return []
 
         query_tokens = self._extract_query_tokens(lowered)
+        logger.info(f"Extracted query_tokens_count={len(query_tokens)}")
+
         scored: dict[str, CandidateScore] = {}
 
         for target_name in self._enabled_target_names:
@@ -78,7 +95,9 @@ class TargetCandidateService:
                     reason=best_reason,
                 )
 
-        return sorted(scored.values(), key=lambda item: (-item.score, item.name))
+        result = sorted(scored.values(), key=lambda item: (-item.score, item.name))
+        logger.info(f"Candidate search completed. candidate_count={len(result)}")
+        return result
 
     def choose_single_if_confident(self, candidates: list[CandidateScore]) -> str | None:
         """
@@ -86,8 +105,16 @@ class TargetCandidateService:
         - Chỉ auto-select khi có đúng 1 candidate
         - Có từ 2 candidate trở lên thì luôn hỏi user
         """
+        logger = bind_logger(
+            self._logger,
+            payload_source="target_candidate_choose_single",
+        )
+
         if len(candidates) == 1:
+            logger.info(f"Auto-selected single confident candidate={candidates[0].name}")
             return candidates[0].name
+
+        logger.info(f"No confident single candidate. candidate_count={len(candidates)}")
         return None
 
     def parse_user_selection(
@@ -95,26 +122,39 @@ class TargetCandidateService:
         raw_selection: str,
         candidate_names: list[str],
     ) -> str | None:
+        logger = bind_logger(
+            self._logger,
+            payload_source="target_candidate_parse_selection",
+        )
+        logger.info(f"Parsing user selection against candidate_count={len(candidate_names)}")
+
         cleaned = raw_selection.strip()
         if not cleaned:
+            logger.warning("User selection is empty.")
             return None
 
         if cleaned.isdigit():
             index = int(cleaned)
             if 1 <= index <= len(candidate_names):
-                return candidate_names[index - 1]
+                selected = candidate_names[index - 1]
+                logger.info(f"User selection resolved by index to target={selected}")
+                return selected
 
         lowered = cleaned.lower()
         for name in candidate_names:
             if lowered == name.lower():
+                logger.info(f"User selection resolved by exact name to target={name}")
                 return name
 
             if self._normalize_space(lowered) == self._normalize_space(name.lower()):
+                logger.info(f"User selection resolved by normalized-space match to target={name}")
                 return name
 
             if self._normalize_compact(lowered) == self._normalize_compact(name.lower()):
+                logger.info(f"User selection resolved by normalized-compact match to target={name}")
                 return name
 
+        logger.warning("User selection could not be resolved to any candidate.")
         return None
 
     def _extract_query_tokens(self, lowered_text: str) -> list[str]:

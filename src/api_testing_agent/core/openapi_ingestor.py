@@ -19,6 +19,7 @@ from api_testing_agent.core.openapi_ref_resolver import (
     OpenApiRefResolver,
     OpenApiRefResolverError,
 )
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class OpenApiIngestError(ValueError):
@@ -29,53 +30,101 @@ class OpenApiIngestor:
     def __init__(self, timeout_seconds: float = 15.0) -> None:
         self._timeout_seconds = timeout_seconds
         self._resolver: OpenApiRefResolver | None = None
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized OpenApiIngestor. timeout_seconds={self._timeout_seconds}",
+            extra={"payload_source": "openapi_ingestor_init"},
+        )
 
     def load_for_target(self, target: ApiTarget) -> list[OpenApiOperation]:
+        logger = bind_logger(
+            self._logger,
+            target_name=target.name,
+            payload_source="openapi_ingestor_load_target",
+        )
+        logger.info("Loading OpenAPI spec for target.")
+
         spec = self._load_raw_spec(target)
         self._resolver = OpenApiRefResolver(spec)
-        return self._parse_operations(spec)
+        operations = self._parse_operations(spec)
+
+        logger.info(f"OpenAPI ingestion completed. operations_count={len(operations)}")
+        return operations
 
     def _load_raw_spec(self, target: ApiTarget) -> dict[str, Any]:
+        logger = bind_logger(
+            self._logger,
+            target_name=target.name,
+            payload_source="openapi_ingestor_load_raw_spec",
+        )
+
         if target.openapi_spec_path:
             path = Path(target.openapi_spec_path)
+            logger.info(f"Loading OpenAPI spec from file path={path}")
+
             if not path.exists():
+                logger.error("OpenAPI spec path not found.")
                 raise OpenApiIngestError(
                     f"OpenAPI spec path not found: {target.openapi_spec_path}"
                 )
+
             text = path.read_text(encoding="utf-8")
             return self._parse_text(text)
 
         if target.openapi_spec_url:
+            logger.info(f"Loading OpenAPI spec from URL={target.openapi_spec_url}")
             with httpx.Client(timeout=self._timeout_seconds, follow_redirects=True) as client:
                 response = client.get(target.openapi_spec_url)
                 response.raise_for_status()
+                logger.info(f"Fetched OpenAPI spec from URL successfully. status_code={response.status_code}")
                 return self._parse_text(response.text)
 
+        logger.error("Target has neither openapi_spec_path nor openapi_spec_url.")
         raise OpenApiIngestError(
             f"Target '{target.name}' has neither openapi_spec_path nor openapi_spec_url."
         )
 
     def _parse_text(self, text: str) -> dict[str, Any]:
+        logger = bind_logger(
+            self._logger,
+            payload_source="openapi_ingestor_parse_text",
+        )
+        logger.info("Parsing raw OpenAPI text.")
+
         stripped = text.strip()
         if not stripped:
+            logger.error("OpenAPI spec content is empty.")
             raise OpenApiIngestError("OpenAPI spec content is empty.")
 
         try:
             if stripped.startswith("{"):
+                logger.info("Detected JSON OpenAPI content.")
                 data = json.loads(stripped)
             else:
+                logger.info("Detected YAML OpenAPI content.")
                 data = yaml.safe_load(stripped)
         except Exception as exc:
+            logger.exception("Failed to parse OpenAPI content.")
             raise OpenApiIngestError(f"Failed to parse OpenAPI content: {exc}") from exc
 
         if not isinstance(data, dict):
+            logger.error("Parsed OpenAPI content is not an object.")
             raise OpenApiIngestError("OpenAPI content must be a JSON/YAML object.")
 
+        logger.info("OpenAPI text parsed successfully.")
         return data
 
     def _parse_operations(self, spec: dict[str, Any]) -> list[OpenApiOperation]:
+        logger = bind_logger(
+            self._logger,
+            payload_source="openapi_ingestor_parse_operations",
+        )
+        logger.info("Parsing operations from OpenAPI spec.")
+
         paths = spec.get("paths")
         if not isinstance(paths, dict):
+            logger.error("Invalid OpenAPI spec: missing 'paths'.")
             raise OpenApiIngestError("Invalid OpenAPI spec: missing 'paths'.")
 
         operations: list[OpenApiOperation] = []
@@ -108,6 +157,7 @@ class OpenApiIngestor:
                 )
                 operations.append(operation)
 
+        logger.info(f"Parsed operations successfully. operations_count={len(operations)}")
         return operations
 
     def _parse_parameters(
@@ -232,6 +282,7 @@ class OpenApiIngestor:
         try:
             return resolver.resolve_parameter_obj(parameter_obj)
         except OpenApiRefResolverError as exc:
+            self._logger.exception("Failed to resolve OpenAPI parameter object.")
             raise OpenApiIngestError(str(exc)) from exc
 
     def _resolve_request_body(self, request_body_obj: dict[str, Any]) -> dict[str, Any]:
@@ -239,6 +290,7 @@ class OpenApiIngestor:
         try:
             return resolver.resolve_request_body_obj(request_body_obj)
         except OpenApiRefResolverError as exc:
+            self._logger.exception("Failed to resolve OpenAPI request body object.")
             raise OpenApiIngestError(str(exc)) from exc
 
     def _resolve_response(self, response_obj: dict[str, Any]) -> dict[str, Any]:
@@ -246,6 +298,7 @@ class OpenApiIngestor:
         try:
             return resolver.resolve_response_obj(response_obj)
         except OpenApiRefResolverError as exc:
+            self._logger.exception("Failed to resolve OpenAPI response object.")
             raise OpenApiIngestError(str(exc)) from exc
 
     def _resolve_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
@@ -253,10 +306,12 @@ class OpenApiIngestor:
         try:
             return resolver.resolve_schema(schema)
         except OpenApiRefResolverError as exc:
+            self._logger.exception("Failed to resolve OpenAPI schema.")
             raise OpenApiIngestError(str(exc)) from exc
 
     def _require_resolver(self) -> OpenApiRefResolver:
         if self._resolver is None:
+            self._logger.error("Ref resolver has not been initialized.")
             raise OpenApiIngestError("Ref resolver has not been initialized.")
         return self._resolver
 

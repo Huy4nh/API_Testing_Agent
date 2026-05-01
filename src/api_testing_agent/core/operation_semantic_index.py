@@ -4,6 +4,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from api_testing_agent.logging_config import bind_logger, get_logger
+
 
 @dataclass(frozen=True)
 class OperationMatch:
@@ -60,6 +62,12 @@ class OperationSemanticIndex:
     def __init__(self, operation_contexts: list[dict]) -> None:
         self._operation_contexts = operation_contexts
         self._entries = [self._build_entry(item) for item in operation_contexts]
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            f"Initialized OperationSemanticIndex with operation_count={len(self._operation_contexts)}.",
+            extra={"payload_source": "operation_semantic_index_init"},
+        )
 
     def find_matches(self, raw_text: str) -> tuple[list[OperationMatch], list[str]]:
         """
@@ -67,11 +75,15 @@ class OperationSemanticIndex:
         - list matched operations
         - list terms không match được
         """
+        logger = bind_logger(
+            self._logger,
+            payload_source="operation_semantic_find_matches",
+        )
+        logger.info("Starting semantic operation matching.")
+
         normalized_text = self._normalize(raw_text)
 
-        # ưu tiên path literal trước
         literal_path_matches = self._match_paths_from_text(normalized_text)
-
         extracted_terms = self._extract_candidate_terms(normalized_text)
 
         matches: list[OperationMatch] = []
@@ -97,9 +109,18 @@ class OperationSemanticIndex:
                     seen_keys.add(key)
                     matches.append(item)
 
+        logger.info(
+            f"Semantic operation matching completed. matches={len(matches)}, unmatched_terms={len(unmatched_terms)}"
+        )
         return matches, unmatched_terms
 
     def describe_available_functions(self) -> list[str]:
+        logger = bind_logger(
+            self._logger,
+            payload_source="operation_semantic_describe_functions",
+        )
+        logger.info("Describing available functions from semantic index.")
+
         lines: list[str] = []
         for op in self._operation_contexts:
             method = str(op.get("method", "")).upper()
@@ -114,6 +135,8 @@ class OperationSemanticIndex:
                 extra = f" — tags: {', '.join(tags)}"
 
             lines.append(f"{method} {path}{extra}")
+
+        logger.info(f"Described available functions successfully. function_count={len(lines)}")
         return lines
 
     def _build_entry(self, operation: dict) -> dict:
@@ -125,11 +148,9 @@ class OperationSemanticIndex:
 
         aliases: set[str] = set()
 
-        # path nguyên bản
         if path:
             aliases.add(self._normalize(path))
 
-        # path segments
         for segment in re.findall(r"[a-zA-Z0-9_/-]+", path):
             seg = segment.strip("/")
             if seg:
@@ -137,17 +158,14 @@ class OperationSemanticIndex:
                 aliases.add(self._normalize(seg.replace("_", " ")))
                 aliases.add(self._normalize(seg.replace("-", " ")))
 
-        # operation_id tokens
         for token in self._tokenize(operation_id):
             aliases.add(token)
 
-        # tags
         for tag in tags:
             aliases.add(self._normalize(tag))
             for token in self._tokenize(tag):
                 aliases.add(token)
 
-        # summary tokens / phrases
         normalized_summary = self._normalize(summary)
         if normalized_summary:
             aliases.add(normalized_summary)
@@ -155,8 +173,6 @@ class OperationSemanticIndex:
         for token in self._tokenize(summary):
             aliases.add(token)
 
-        # alias tăng cường từ path rất phổ biến
-        # nhưng vẫn sinh từ path chứ không hardcode theo project riêng
         aliases |= self._derive_generic_aliases_from_path(path)
 
         return {
@@ -167,14 +183,6 @@ class OperationSemanticIndex:
         }
 
     def _derive_generic_aliases_from_path(self, path: str) -> set[str]:
-        """
-        Alias sinh ra một cách tương đối tổng quát từ path.
-        Ví dụ:
-        - /FB -> fb, facebook
-        - /YT -> yt, youtube
-        - /img -> img, image
-        - /X/content -> x, content, x content
-        """
         normalized_path = self._normalize(path)
         segments = [seg for seg in normalized_path.split("/") if seg]
         aliases: set[str] = set()
@@ -217,16 +225,8 @@ class OperationSemanticIndex:
         return matches
 
     def _extract_candidate_terms(self, normalized_text: str) -> list[str]:
-        """
-        Tách các terms có ý nghĩa khỏi feedback.
-
-        Hỗ trợ:
-        - nối bằng "và", "voi", ","
-        - phrases nhiều từ
-        """
         cleaned = normalized_text
 
-        # bỏ những phrase command phổ biến để còn lại phần target scope
         command_phrases = [
             "chi test",
             "chi",
@@ -244,7 +244,6 @@ class OperationSemanticIndex:
         for phrase in command_phrases:
             cleaned = re.sub(rf"\b{re.escape(phrase)}\b", " ", cleaned)
 
-        # split theo liên từ
         parts = re.split(r"\bva\b|,|;", cleaned)
 
         terms: list[str] = []
@@ -253,16 +252,13 @@ class OperationSemanticIndex:
             if not part:
                 continue
 
-            # giữ nguyên phrase nếu nó có ý nghĩa
             if len(part) >= 2:
                 terms.append(part)
 
-            # đồng thời tách token
             for token in self._tokenize(part):
                 if token not in terms:
                     terms.append(token)
 
-        # unique preserve order
         unique_terms: list[str] = []
         seen: set[str] = set()
         for term in terms:
@@ -278,7 +274,6 @@ class OperationSemanticIndex:
         for entry in self._entries:
             aliases: set[str] = entry["aliases"]
 
-            # exact alias match
             if term in aliases:
                 matches.append(
                     OperationMatch(
@@ -289,7 +284,6 @@ class OperationSemanticIndex:
                 )
                 continue
 
-            # contains match hai chiều để bắt được "youtube", "yt"
             for alias in aliases:
                 if term == alias:
                     matches.append(
@@ -341,7 +335,6 @@ class OperationSemanticIndex:
             if token_space and token_space != token:
                 tokens.append(token_space)
 
-        # unique preserve order
         unique: list[str] = []
         seen: set[str] = set()
         for token in tokens:

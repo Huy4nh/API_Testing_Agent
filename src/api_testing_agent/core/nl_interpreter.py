@@ -5,6 +5,7 @@ import re
 from api_testing_agent.core.domain_alias_resolver import DomainAliasResolver
 from api_testing_agent.core.dynamic_target_resolver import DynamicTargetResolver
 from api_testing_agent.core.models import HttpMethod
+from api_testing_agent.logging_config import bind_logger, get_logger
 
 
 class NaturalLanguageInterpreter:
@@ -53,22 +54,33 @@ class NaturalLanguageInterpreter:
     ) -> None:
         self._resolver = resolver or DomainAliasResolver()
         self._target_resolver = target_resolver or DynamicTargetResolver.from_env_or_default()
+        self._logger = get_logger(__name__)
+
+        self._logger.info(
+            "Initialized NaturalLanguageInterpreter.",
+            extra={"payload_source": "nl_interpreter_init"},
+        )
 
     def normalize(self, text: str) -> str:
+        logger = bind_logger(
+            self._logger,
+            payload_source="nl_interpreter_normalize",
+        )
+        logger.info("Starting natural language normalization.")
+
         if not text or not text.strip():
+            logger.warning("Normalization received empty text. Returning original value.")
             return text
 
         raw = text.strip()
 
-        # Nếu đã là canonical command thì giữ nguyên
         if self._looks_like_canonical_command(raw):
+            logger.info("Input already looks like canonical command. Returning original text.")
             return raw
 
         searchable = DynamicTargetResolver.to_searchable_text(raw)
-
         resolved = self._resolver.resolve(searchable)
 
-        # Quan trọng: tránh crash khi resolver trả None
         resolved_methods = list(getattr(resolved, "methods", []) or [])
         resolved_tags = list(getattr(resolved, "tags", []) or [])
         resolved_paths = list(getattr(resolved, "paths", []) or [])
@@ -79,14 +91,18 @@ class NaturalLanguageInterpreter:
         target_name = self._target_resolver.resolve(searchable)
         if target_name:
             parts.extend(["target", target_name])
+            logger.info(f"Resolved target during normalization: {target_name}")
 
         explicit_methods = self._detect_explicit_methods(searchable)
         if explicit_methods:
             methods = explicit_methods
+            logger.info("Using explicit HTTP methods from user text.")
         elif resolved_methods:
             methods = resolved_methods
+            logger.info("Using methods resolved from domain alias.")
         else:
             methods = self._detect_natural_methods(searchable)
+            logger.info("Using natural-language method detection.")
 
         tags = resolved_tags
 
@@ -118,6 +134,10 @@ class NaturalLanguageInterpreter:
 
         canonical = " ".join(parts)
         canonical = re.sub(r"\s+", " ", canonical).strip()
+
+        logger.info(
+            f"Normalization completed. target_name={target_name}, methods={len(methods)}, tags={len(tags)}, paths={len(paths)}, test_markers={len(test_markers)}, ignore_fields={len(ignore_fields)}, limit={limit}"
+        )
         return canonical
 
     def _looks_like_canonical_command(self, raw: str) -> bool:

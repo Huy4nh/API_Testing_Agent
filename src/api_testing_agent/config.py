@@ -19,7 +19,12 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None, alias="TELEGRAM_BOT_TOKEN")
 
     testcase_generator_mode: str = Field(default="rule", alias="TESTCASE_GENERATOR_MODE")
+
+    # Có thể để dạng "openai:gpt-5.2" hoặc chỉ "gpt-5.2"
     langchain_model_name: str = Field(default="openai:gpt-5.2", alias="LANGCHAIN_MODEL_NAME")
+
+    # Tùy chọn. Nếu không set, code có thể để LangChain tự suy ra provider.
+    langchain_model_provider: str | None = Field(default=None, alias="LANGCHAIN_MODEL_PROVIDER")
 
     langgraph_checkpointer: str = Field(default="memory", alias="LANGGRAPH_CHECKPOINTER")
     langgraph_sqlite_path: str = Field(

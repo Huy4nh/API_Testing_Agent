@@ -14,6 +14,7 @@ from api_testing_agent.core.execution_models import ExecutionBatchResult, Execut
 from api_testing_agent.core.unknown_output_description_service import (
     UnknownOutputDescriptionService,
 )
+from api_testing_agent.logging_config import bind_logger, get_logger, setup_logging
 from api_testing_agent.tasks.orchestrator import ReviewWorkflowResult, TestOrchestrator
 
 
@@ -21,11 +22,15 @@ DIVIDER = "=" * 100
 
 
 def main() -> None:
+    setup_logging()
+    base_logger = get_logger(__name__)
+
     settings = Settings()
     orchestrator = TestOrchestrator(settings)
 
     unknown_output_description_service = UnknownOutputDescriptionService(
         model_name=settings.langchain_model_name,
+        model_provider=getattr(settings, "langchain_model_provider", None),
     )
 
     execution_engine = ExecutionEngine(
@@ -35,12 +40,20 @@ def main() -> None:
     log_formatter = ExecutionLogFormatter()
 
     thread_id = _generate_thread_id()
+    logger = bind_logger(base_logger, thread_id=thread_id)
+    logger.info("Started manual execution workflow.")
 
     try:
         raw_text = input("Nhập lệnh test: ").strip()
         if not raw_text:
+            logger.warning("No input provided. Exiting manual workflow.")
             print("Không có input. Kết thúc.")
             return
+
+        logger.info(
+            "Received user input for manual workflow.",
+            extra={"payload_source": "manual_input"},
+        )
 
         result = orchestrator.start_review_from_text(raw_text, thread_id=thread_id)
 
@@ -52,12 +65,23 @@ def main() -> None:
                 "invalid_function",
                 "cancelled",
             }:
+                logger.info(
+                    f"Workflow ended early with status={result.status}.",
+                    extra={"target_name": result.selected_target or "-"},
+                )
                 return
 
             if result.status == "pending_target_selection":
+                logger.info(
+                    "Pending target selection.",
+                    extra={"target_name": ",".join(result.candidate_targets or [])},
+                )
+
                 selection = input(
                     "\nNhập lựa chọn target [số thứ tự / tên target / cancel]: "
                 ).strip()
+
+                logger.info("User submitted target selection.")
                 result = orchestrator.resume_target_selection(
                     result.thread_id,
                     selection=selection,
@@ -65,6 +89,11 @@ def main() -> None:
                 continue
 
             if result.status == "pending_review":
+                logger.info(
+                    "Pending review for testcase draft.",
+                    extra={"target_name": result.selected_target or "-"},
+                )
+
                 raw_action = input(
                     "\nNhập action [approve / feedback / cancel]: "
                 ).strip()
@@ -72,6 +101,11 @@ def main() -> None:
                 action, feedback = _normalize_review_input(raw_action)
 
                 if action == "approve":
+                    logger.info(
+                        "User approved testcase draft.",
+                        extra={"target_name": result.selected_target or "-"},
+                    )
+
                     result = orchestrator.resume_review(
                         result.thread_id,
                         action="approve",
@@ -88,6 +122,14 @@ def main() -> None:
                         draft_groups=payload["draft_groups"],
                     )
 
+                    logger.info(
+                        "Execution batch finished.",
+                        extra={
+                            "target_name": batch_result.target_name,
+                            "payload_source": "execution_batch",
+                        },
+                    )
+
                     report_paths = _write_execution_reports(
                         settings=settings,
                         batch_result=batch_result,
@@ -101,6 +143,10 @@ def main() -> None:
                     return
 
                 if action == "cancel":
+                    logger.info(
+                        "User cancelled review.",
+                        extra={"target_name": result.selected_target or "-"},
+                    )
                     result = orchestrator.resume_review(
                         result.thread_id,
                         action="cancel",
@@ -112,6 +158,11 @@ def main() -> None:
                     if not feedback:
                         feedback = input("Nhập feedback để sinh lại testcase: ").strip()
 
+                    logger.info(
+                        "User requested testcase revision.",
+                        extra={"target_name": result.selected_target or "-"},
+                    )
+
                     result = orchestrator.resume_review(
                         result.thread_id,
                         action="revise",
@@ -119,10 +170,16 @@ def main() -> None:
                     )
                     continue
 
+                logger.warning(f"Invalid review action: {raw_action}")
                 print(f"Action không hợp lệ: {raw_action}")
                 continue
 
             if result.status == "approved":
+                logger.info(
+                    "Workflow reached approved state directly. Starting execution.",
+                    extra={"target_name": result.selected_target or "-"},
+                )
+
                 payload = _get_execution_payload(orchestrator, result.thread_id)
                 batch_result = execution_engine.execute_approved_draft(
                     thread_id=payload["thread_id"],
@@ -130,6 +187,14 @@ def main() -> None:
                     target_name=payload["target_name"],
                     operation_contexts=payload["operation_contexts"],
                     draft_groups=payload["draft_groups"],
+                )
+
+                logger.info(
+                    "Execution batch finished.",
+                    extra={
+                        "target_name": batch_result.target_name,
+                        "payload_source": "execution_batch",
+                    },
                 )
 
                 report_paths = _write_execution_reports(
@@ -144,12 +209,15 @@ def main() -> None:
                 )
                 return
 
+            logger.warning(f"Unhandled workflow status: {result.status}")
             print(f"Trạng thái chưa xử lý: {result.status}")
             return
 
     except KeyboardInterrupt:
+        logger.warning("Manual workflow interrupted by user.")
         print("\nĐã dừng bởi người dùng.")
     except Exception as exc:
+        logger.exception(f"Manual workflow failed with exception: {exc}")
         print("\nCó lỗi khi chạy workflow execution test.")
         print(f"Error: {exc}")
         print("\nChi tiết traceback:")
@@ -242,18 +310,6 @@ def _print_review_result(result: ReviewWorkflowResult) -> None:
 
 
 def _strip_duplicate_preview_header(preview_text: str) -> str:
-    """
-    Preview của TestcaseDraftReporter đã chứa sẵn:
-    - Review round
-    - Original request
-    - Canonical command
-    - Understanding
-    - Scope note
-    - Active operations
-
-    Trong CLI, ta đã in một phần metadata ở phía trên rồi.
-    Hàm này loại bớt các dòng đầu bị trùng để console gọn hơn.
-    """
     duplicated_prefixes = (
         "Review round:",
         "Original request:",
@@ -304,6 +360,15 @@ def _print_execution_case_detail(case_result: ExecutionCaseResult) -> None:
     print(f"  headers: {case_result.final_headers}")
     print(f"  query_params: {case_result.final_query_params}")
     print(f"  json_body: {case_result.final_json_body}")
+
+    if case_result.payload_source:
+        print(f"  payload_source: {case_result.payload_source}")
+
+    if case_result.planner_reason:
+        print(f"  planner_reason: {case_result.planner_reason}")
+
+    if case_result.planner_confidence is not None:
+        print(f"  planner_confidence: {case_result.planner_confidence:.2f}")
 
     if case_result.response_headers:
         print(f"  response_headers: {case_result.response_headers}")
@@ -373,6 +438,15 @@ def _build_execution_markdown(batch_result: ExecutionBatchResult) -> str:
         lines.append(f"- Response time (ms): `{result.response_time_ms:.2f}`")
         lines.append(f"- Executed at: `{result.executed_at}`")
         lines.append(f"- Skip: `{result.skip}`")
+
+        if result.payload_source:
+            lines.append(f"- Payload source: `{result.payload_source}`")
+
+        if result.planner_reason:
+            lines.append(f"- Planner reason: {result.planner_reason}")
+
+        if result.planner_confidence is not None:
+            lines.append(f"- Planner confidence: `{result.planner_confidence:.2f}`")
 
         if result.skip_reason:
             lines.append(f"- Skip reason: {result.skip_reason}")
