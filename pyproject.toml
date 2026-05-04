@@ -19,6 +19,7 @@ langchain-openai = "^1.2.1"
 langgraph = "^1.1.9"
 langgraph-checkpoint-sqlite = "^3.0.3"
 langchain-anthropic = "^1.4.1"
+typeguard = "^4.5.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "d3462e44ded643d58d12e1a339550af2",
+    "thread_id": "wf-c2286a8a49dc49038ae367a2281d45ff",
+    "phase": "pending_review",
+    "current_target": "img_local",
+    "assistant_message": "Review round: 3\nOriginal request: test sinh ảnh img\nCanonical command: test target img_local /img POST positive missing invalid\nUnderstanding: Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test sinh ảnh, tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).\nScope note: Không áp dụng được feedback 'User yêu cầu thêm path '/fb' nhưng operation này không tồn tại trong catalog. Catalog chỉ có duy nhất một operation: POST /img (image_generate_img_post).' vì không map được vào operation hiện có. Giữ nguyên phạm vi hiện tại.\nActive operations: POST /img\n\nFeedback history:\n- 1. thêm fb vào\n- 2. thêm /fb ấy\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] Gửi request hợp lệ với content là URL hợp lệ, có prompt và quality\n      why: Cung cấp đầy đủ các trường hợp lệ để kiểm tra endpoint hoạt động bình thường, trả về 200.\n      expect: [200]\n   2. [missing_required] Gửi request thiếu trường 'content' bắt buộc\n      why: Field 'content' là required theo schema. Bỏ qua field này nên dẫn đến lỗi validation 422.\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request với 'content' là số nguyên thay vì chuỗi\n      why: Field 'content' yêu cầu kiểu string (URI hoặc string thường). Truyền số nguyên sẽ gây lỗi validation 422.\n      expect: [422]\n   4. [unauthorized_or_forbidden] Unauthorized test không áp dụng vì operation không yêu cầu auth\n      why: Theo spec, auth_required=false, nên không có cơ chế auth nào để test unauthorized.\n      skip: true\n      skip_reason: Operation không yêu cầu xác thực (auth_required=false), test unauthorized không có ý nghĩa.\n   5. [resource_not_found] Resource not found không áp dụng vì không có path parameter đại diện resource ID\n      why: Endpoint POST /img không có path parameter nào đại diện cho resource identifier, nên không thể test 404 theo nghĩa resource not found.\n      skip: true\n      skip_reason: Không có path parameter đại diện resource identifier trong operation này.\n",
+    "status_message": "Workflow `d3462e44ded643d58d12e1a339550af2` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+    "selected_target": "img_local",
+    "candidate_targets": [
+      "img_api_staging",
+      "img_local",
+      "img_api_prod"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Bạn muốn kiểm thử cụ thể endpoint **POST /img** (sinh ảnh) thuộc target `img_local`, hay bạn muốn kiểm thử toàn bộ các endpoint liên quan đến `img_local`? Ngoài ra, bạn có muốn giữ nguyên các loại test case mặc định (positive, unauthorized, not_found, missing, invalid) không?",
+    "scope_confirmation_summary": "Người dùng xác nhận muốn test sinh ảnh, tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).",
+    "canonical_command": "test target img_local /img POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test sinh ảnh, tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "approve",
+      "revise",
+      "show_review_scope",
+      "cancel",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_local\\wf-c2286a8a49dc49038ae367a2281d45ff\\round_03.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_local\\wf-c2286a8a49dc49038ae367a2281d45ff\\round_03.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_local\\wf-c2286a8a49dc49038ae367a2281d45ff\\round_03.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_local\\wf-c2286a8a49dc49038ae367a2281d45ff\\round_03.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

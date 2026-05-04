@@ -25,6 +25,8 @@ class ReportIntentAgent:
     Design:
     - Keep only a very thin hard-stop layer for *extremely explicit* destructive commands.
     - Let hybrid AI classify most realistic user messages first.
+    - Add a small safety disambiguation layer so rewrite/explain/rerun requests
+      are not misrouted into destructive actions.
     - Use heuristics only as a fallback when AI is unavailable / fails / is too uncertain.
     """
 
@@ -85,6 +87,11 @@ class ReportIntentAgent:
             logger=logger,
         )
         if ai_decision is not None:
+            ai_decision = self._apply_safety_disambiguation(
+                raw=cleaned,
+                normalized=normalized,
+                decision=ai_decision,
+            )
             logger.info(
                 f"AI-first detected intent={ai_decision.intent.value} "
                 f"confidence={ai_decision.confidence:.2f}"
@@ -94,6 +101,11 @@ class ReportIntentAgent:
         # 3) Heuristic fallback only if AI is absent / failed / too uncertain.
         heuristic_decision = self._detect_with_heuristics(cleaned, normalized)
         if heuristic_decision is not None:
+            heuristic_decision = self._apply_safety_disambiguation(
+                raw=cleaned,
+                normalized=normalized,
+                decision=heuristic_decision,
+            )
             logger.info(
                 f"Heuristic fallback detected intent={heuristic_decision.intent.value}"
             )
@@ -104,12 +116,38 @@ class ReportIntentAgent:
             try:
                 resolved = self._fallback_resolver(cleaned, dict(state or {}))
                 if resolved is not None:
+                    resolved = self._apply_safety_disambiguation(
+                        raw=cleaned,
+                        normalized=normalized,
+                        decision=resolved,
+                    )
                     logger.info(
                         f"Fallback resolver returned intent={resolved.intent.value}"
                     )
                     return resolved
             except Exception as exc:
                 logger.warning(f"Fallback resolver failed: {exc}")
+
+        # 5) Final safe default.
+        if self._is_strong_rewrite_signal(normalized):
+            decision = ReportIntentDecision(
+                intent=ReportUserIntent.REVISE_REPORT_TEXT,
+                confidence=0.78,
+                reason="Strong rewrite/explanation markers detected in final fallback.",
+                revision_instruction=cleaned,
+            )
+            logger.info(f"Detected intent={decision.intent.value}")
+            return decision
+
+        if self._is_strong_rerun_signal(normalized):
+            decision = ReportIntentDecision(
+                intent=ReportUserIntent.REVISE_AND_RERUN,
+                confidence=0.76,
+                reason="Strong rerun/scope-adjustment markers detected in final fallback.",
+                rerun_instruction=cleaned,
+            )
+            logger.info(f"Detected intent={decision.intent.value}")
+            return decision
 
         decision = ReportIntentDecision(
             intent=ReportUserIntent.ASK_REPORT_QUESTION,
@@ -215,6 +253,56 @@ class ReportIntentAgent:
 
         return decision.confidence >= 0.60
 
+    def _apply_safety_disambiguation(
+        self,
+        *,
+        raw: str,
+        normalized: str,
+        decision: ReportIntentDecision,
+    ) -> ReportIntentDecision:
+        """
+        Safety layer:
+        - If the message strongly looks like rewrite/explain/summarize, never let it
+          collapse into cancel/finalize/question.
+        - If the message strongly looks like rerun/scope-adjust, never let it collapse
+          into cancel/finalize/question.
+        """
+        if self._is_strong_rewrite_signal(normalized):
+            if decision.intent in {
+                ReportUserIntent.CANCEL_REPORT,
+                ReportUserIntent.FINALIZE_REPORT,
+                ReportUserIntent.ASK_REPORT_QUESTION,
+                ReportUserIntent.UNKNOWN,
+            }:
+                return ReportIntentDecision(
+                    intent=ReportUserIntent.REVISE_REPORT_TEXT,
+                    confidence=max(decision.confidence, 0.82),
+                    reason=(
+                        "Safety disambiguation: the message strongly indicates "
+                        "rewrite/explanation rather than a destructive action."
+                    ),
+                    revision_instruction=decision.revision_instruction or raw,
+                )
+
+        if self._is_strong_rerun_signal(normalized):
+            if decision.intent in {
+                ReportUserIntent.CANCEL_REPORT,
+                ReportUserIntent.FINALIZE_REPORT,
+                ReportUserIntent.ASK_REPORT_QUESTION,
+                ReportUserIntent.UNKNOWN,
+            }:
+                return ReportIntentDecision(
+                    intent=ReportUserIntent.REVISE_AND_RERUN,
+                    confidence=max(decision.confidence, 0.80),
+                    reason=(
+                        "Safety disambiguation: the message strongly indicates "
+                        "rerun/scope adjustment rather than a destructive action."
+                    ),
+                    rerun_instruction=decision.rerun_instruction or raw,
+                )
+
+        return decision
+
     def _detect_with_heuristics(
         self,
         raw: str,
@@ -267,49 +355,6 @@ class ReportIntentAgent:
                 reason="Detected explicit cancel/discard command.",
             )
 
-        cancel_tokens = [
-            "huy",
-            "cancel",
-            "discard",
-            "stop",
-            "bo",
-        ]
-        cancel_object_tokens = [
-            "report",
-            "workflow",
-            "ket qua",
-            "het",
-            "tat ca",
-            "di",
-            "luon",
-        ]
-        non_cancel_tokens = [
-            "viet lai",
-            "giai thich",
-            "phan tich",
-            "tom tat",
-            "summary",
-            "rewrite",
-            "explain",
-            "rerun",
-            "chay lai",
-            "share",
-            "chia se",
-            "luu",
-            "save",
-            "finalize",
-        ]
-
-        if self._contains_any(normalized, cancel_tokens) and self._contains_any(
-            normalized,
-            cancel_object_tokens,
-        ) and not self._contains_any(normalized, non_cancel_tokens):
-            return ReportIntentDecision(
-                intent=ReportUserIntent.CANCEL_REPORT,
-                confidence=0.95,
-                reason="Detected strong cancel language.",
-            )
-
         return None
 
     def _detect_explicit_finalize(
@@ -347,61 +392,6 @@ class ReportIntentAgent:
                 confidence=0.98,
                 reason="Detected explicit finalize confirmation.",
             )
-
-        finalize_tokens = [
-            "luu",
-            "save",
-            "finalize",
-            "approve",
-            "approved",
-            "chot",
-        ]
-        confirm_tokens = [
-            "ok",
-            "oke",
-            "dong y",
-            "done",
-            "go ahead",
-            "please",
-            "di",
-            "luon",
-        ]
-        non_finalize_tokens = [
-            "viet lai",
-            "giai thich",
-            "phan tich",
-            "tom tat",
-            "summary",
-            "rewrite",
-            "explain",
-            "rerun",
-            "chay lai",
-            "share",
-            "chia se",
-            "huy",
-            "cancel",
-            "discard",
-        ]
-
-        if self._contains_any(normalized, finalize_tokens) and not self._contains_any(
-            normalized,
-            non_finalize_tokens,
-        ):
-            if self._contains_any(normalized, confirm_tokens) or normalized in {
-                "luu",
-                "luu di",
-                "save",
-                "save report",
-                "chot",
-                "chot di",
-                "finalize",
-                "finalize report",
-            }:
-                return ReportIntentDecision(
-                    intent=ReportUserIntent.FINALIZE_REPORT,
-                    confidence=0.94,
-                    reason="Detected strong finalize/save command.",
-                )
 
         return None
 
@@ -501,37 +491,7 @@ class ReportIntentAgent:
         raw: str,
         normalized: str,
     ) -> ReportIntentDecision | None:
-        tokens = [
-            "viet lai",
-            "chinh report",
-            "sua report",
-            "doi format",
-            "gon hon",
-            "ngan hon",
-            "ngan gon",
-            "chi tiet hon",
-            "chi tiet",
-            "dai hon",
-            "bullet",
-            "gach dau dong",
-            "de hieu hon",
-            "trinh bay lai",
-            "summary ngan",
-            "ngon ngu tu nhien",
-            "dien giai",
-            "giai thich ro rang",
-            "phan tich",
-            "nhan xet",
-            "rewrite report",
-            "rewrite the report",
-            "rephrase report",
-            "natural language",
-            "easy to understand",
-            "explain the report",
-            "make it clearer",
-            "make it easier to understand",
-        ]
-        if self._contains_any(normalized, tokens):
+        if self._is_strong_rewrite_signal(normalized):
             return ReportIntentDecision(
                 intent=ReportUserIntent.REVISE_REPORT_TEXT,
                 confidence=0.84,
@@ -572,6 +532,112 @@ class ReportIntentAgent:
             )
 
         return None
+
+    def _is_strong_rewrite_signal(
+        self,
+        normalized: str,
+    ) -> bool:
+        tokens = [
+            "viet lai",
+            "chinh report",
+            "sua report",
+            "doi format",
+            "gon hon",
+            "ngan hon",
+            "ngan gon",
+            "chi tiet hon",
+            "chi tiet",
+            "dai hon",
+            "bullet",
+            "gach dau dong",
+            "de hieu hon",
+            "de hieu",
+            "trinh bay lai",
+            "summary ngan",
+            "ngon ngu tu nhien",
+            "tieng viet",
+            "chuyen report",
+            "chuyen bao cao",
+            "dien giai",
+            "dien giai ro",
+            "giai thich",
+            "giai thich ro rang",
+            "phan tich",
+            "nhan xet",
+            "binh luan",
+            "bien giai",
+            "viet de hieu",
+            "viet lai cho de hieu",
+            "rewrite report",
+            "rewrite the report",
+            "rephrase report",
+            "natural language",
+            "easy to understand",
+            "explain the report",
+            "make it clearer",
+            "make it easier to understand",
+            "rewrite this report",
+            "rewrite this in vietnamese",
+        ]
+        return self._contains_any(normalized, tokens)
+
+    def _is_strong_rerun_signal(
+        self,
+        normalized: str,
+    ) -> bool:
+        rerun_tokens = [
+            "chay lai",
+            "rerun",
+            "re-run",
+            "retest",
+            "test lai",
+            "run lai",
+        ]
+        scope_tokens = [
+            "bo ",
+            "them ",
+            "chi ",
+            "only ",
+            "exclude ",
+            "include ",
+            "khong can",
+            "doi ",
+            "sua ",
+        ]
+        test_tokens = [
+            "test",
+            "case",
+            "endpoint",
+            "module",
+            "positive",
+            "negative",
+            "unauthorized",
+            "not found",
+            "missing",
+            "invalid",
+            "get",
+            "post",
+            "put",
+            "patch",
+            "delete",
+            "schema",
+            "required",
+            "field",
+            "auth",
+            "/img",
+            "/post",
+        ]
+
+        if self._contains_any(normalized, rerun_tokens):
+            return True
+
+        if self._contains_any(normalized, scope_tokens) and self._contains_any(
+            normalized,
+            test_tokens,
+        ):
+            return True
+
+        return False
 
     def _safe_map_intent(self, raw_intent: str) -> ReportUserIntent:
         try:

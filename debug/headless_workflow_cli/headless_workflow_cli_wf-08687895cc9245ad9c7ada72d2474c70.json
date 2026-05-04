@@ -1,0 +1,73 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "9cd0ea72f70b499181443a52bcba5ccc",
+    "thread_id": "wf-08687895cc9245ad9c7ada72d2474c70",
+    "phase": "pending_review",
+    "current_target": "img_local",
+    "assistant_message": "Review round: 2\nOriginal request: test sinh ảnh của img\nCanonical command: test target img_local /img POST positive missing invalid\nUnderstanding: Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test chức năng sinh ảnh của img, tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).\nScope note: Feedback không thay đổi phạm vi test. Giữ nguyên scope hiện tại.\nActive operations: POST /img\n\nFeedback history:\n- 1. thêm youtube (yt) vào các loại content được test, ví dụ test với content là URL YouTube\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] POST /img với content là URL YouTube hợp lệ và các trường tùy chọn\n      why: Sinh ảnh với content là URL YouTube (theo feedback), prompt và quality tùy chọn. Đây là happy path cơ bản.\n      expect: [200]\n   2. [missing_required] POST /img thiếu trường bắt buộc content\n      why: Trường content là required trong schema ImgInfo. Bỏ qua nó sẽ gây lỗi validation.\n      expect: [422]\n   3. [invalid_type_or_format] POST /img với quality là chuỗi thay vì integer\n      why: Trường quality phải là integer hoặc null, truyền vào chuỗi sẽ gây lỗi validation type.\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /img - operation không yêu cầu auth\n      why: Operation này không có auth_required, nên test unauthorized không phù hợp.\n      skip: true\n      skip_reason: Operation không yêu cầu xác thực (auth_required=false), test unauthorized không có ý nghĩa.\n   5. [resource_not_found] POST /img - không có path parameter resource identifier\n      why: Operation POST /img không có path parameter nào đại diện cho resource ID, nên không thể test not found theo resource.\n      skip: true\n      skip_reason: Không có path parameter resource identifier trong operation này, test resource_not_found không phù hợp.\n",
+    "status_message": "Workflow `9cd0ea72f70b499181443a52bcba5ccc` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+    "selected_target": "img_local",
+    "candidate_targets": [
+      "img_api_staging",
+      "img_local"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Bạn muốn kiểm thử cụ thể endpoint nào cho chức năng sinh ảnh? Hệ thống đã xác định được endpoint **POST /img** (sinh ảnh). Bạn có muốn kiểm thử đúng endpoint này không, hay bạn muốn mở rộng/thu hẹp phạm vi kiểm thử?",
+    "scope_confirmation_summary": "Người dùng xác nhận muốn test chức năng sinh ảnh của img, tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).",
+    "canonical_command": "test target img_local /img POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test chức năng sinh ảnh của img, tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "approve",
+      "revise",
+      "show_review_scope",
+      "cancel",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_local\\wf-08687895cc9245ad9c7ada72d2474c70\\round_02.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_local\\wf-08687895cc9245ad9c7ada72d2474c70\\round_02.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_local\\wf-08687895cc9245ad9c7ada72d2474c70\\round_02.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_local\\wf-08687895cc9245ad9c7ada72d2474c70\\round_02.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

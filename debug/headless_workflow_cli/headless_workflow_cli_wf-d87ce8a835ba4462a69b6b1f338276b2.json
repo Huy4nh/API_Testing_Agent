@@ -1,0 +1,70 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "a89fea5901d4488b98bda08b4a024652",
+    "thread_id": "wf-d87ce8a835ba4462a69b6b1f338276b2",
+    "phase": "error",
+    "current_target": "img_local",
+    "assistant_message": "Xử lý workflow thất bại: Error code: 503 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Grammar compilation is temporarily unavailable. Please try again.'}, 'request_id': 'req_011CahsUkGFn6QLET3eCB9Vm'}",
+    "status_message": "Workflow `a89fea5901d4488b98bda08b4a024652` đang ở phase `error`. Target: `img_local`. Canonical command: `test target img_local /img POST /post/x POST positive missing invalid`.",
+    "selected_target": "img_local",
+    "candidate_targets": [
+      "img_local",
+      "img_api_staging",
+      "img_api_prod"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Bạn muốn thêm nhóm/operation nào nữa? Các lựa chọn hiện có là:\n- **fb** (POST /FB - Fb Get Content)\n- **post** (POST /post/x - X Post)\n- **x** (POST /X - X Get Content, POST /X/content - X Content)\n- **yt** (POST /YT - Yt Get Content)",
+    "scope_confirmation_summary": "Đã áp dụng gợi ý các nhóm nên test trước.",
+    "canonical_command": "test target img_local /img POST /post/x POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, post. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /post/x. Lý do: Đã áp dụng gợi ý các nhóm nên test trước.",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_local\\wf-d87ce8a835ba4462a69b6b1f338276b2\\round_01.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_local\\wf-d87ce8a835ba4462a69b6b1f338276b2\\round_01.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_local\\wf-d87ce8a835ba4462a69b6b1f338276b2\\round_01.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_local\\wf-d87ce8a835ba4462a69b6b1f338276b2\\round_01.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

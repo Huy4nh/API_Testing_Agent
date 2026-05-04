@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "e19380ad44654aa694a20f4f588d017a",
+    "thread_id": "wf-8156a5e922ca44f988ca0505296265c6",
+    "phase": "error",
+    "current_target": null,
+    "assistant_message": "Tôi chưa xác định được bước tiếp theo phù hợp. Bạn hãy nói rõ hơn.",
+    "status_message": "Workflow `e19380ad44654aa694a20f4f588d017a` đang ở phase `error`.",
+    "selected_target": null,
+    "candidate_targets": [],
+    "selection_question": null,
+    "scope_confirmation_question": null,
+    "scope_confirmation_summary": null,
+    "canonical_command": null,
+    "understanding_explanation": null,
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": []
+  },
+  "snapshot": null,
+  "artifacts": [],
+  "error": null
+}

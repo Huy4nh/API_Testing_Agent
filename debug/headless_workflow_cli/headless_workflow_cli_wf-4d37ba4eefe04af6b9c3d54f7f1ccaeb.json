@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "dfc29cd440f5431da195f47c55aa884c",
+    "thread_id": "wf-4d37ba4eefe04af6b9c3d54f7f1ccaeb",
+    "phase": "pending_review",
+    "current_target": "img_local",
+    "assistant_message": "Review round: 1\nOriginal request: test yt của img\nCanonical command: test target img_local /YT POST positive missing invalid\nUnderstanding: Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /YT.\nActive operations: POST /YT\n\n1. POST /YT (operation_id=yt_get_content_YT_post)\n   1. [positive] Gửi request POST /YT với data là một YouTube URL hợp lệ\n      why: Test case cơ bản với đầy đủ required field và giá trị hợp lệ dạng URI để kiểm tra response 200\n      expect: [200]\n   2. [missing_required] Gửi request POST /YT không có field 'data' trong body\n      why: Field 'data' là required theo schema, thiếu nó phải gây lỗi validation\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request POST /YT với data là số nguyên thay vì string\n      why: Field 'data' phải là string, gửi integer sẽ vi phạm kiểu dữ liệu\n      expect: [422]\n   4. [unauthorized_or_forbidden] Không sinh test case unauthorized vì operation không yêu cầu auth\n      why: Theo schema, auth_required=false và không có security scheme nào, nên skip\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false)\n   5. [resource_not_found] Không sinh test case resource_not_found vì không có path parameter\n      why: Endpoint /YT không có path parameter đại diện cho resource identifier nên không thể test 404\n      skip: true\n      skip_reason: Không có path parameter đại diện resource identifier trong operation này\n",
+    "status_message": "Workflow `dfc29cd440f5431da195f47c55aa884c` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /YT POST positive missing invalid`.",
+    "selected_target": "img_local",
+    "candidate_targets": [
+      "img_api_staging",
+      "img_local",
+      "img_api_prod"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": null,
+    "scope_confirmation_summary": null,
+    "canonical_command": "test target img_local /YT POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /YT.",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "approve",
+      "revise",
+      "show_review_scope",
+      "cancel",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_local\\wf-4d37ba4eefe04af6b9c3d54f7f1ccaeb\\round_01.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_local\\wf-4d37ba4eefe04af6b9c3d54f7f1ccaeb\\round_01.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_local\\wf-4d37ba4eefe04af6b9c3d54f7f1ccaeb\\round_01.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_local\\wf-4d37ba4eefe04af6b9c3d54f7f1ccaeb\\round_01.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

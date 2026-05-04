@@ -905,6 +905,7 @@ class TestOrchestrator:
             canonical_command_override=canonical_command_override,
             understanding_explanation_override=understanding_explanation_override,
             scope_note=decision.reason,
+            all_operations=operations,
         )
 
         return ReviewWorkflowResult(
@@ -976,7 +977,40 @@ class TestOrchestrator:
                 seen.add(cleaned)
                 result.append(cleaned)
         return result
+    def _expand_group_ids_to_operation_ids(
+        self,
+        *,
+        group_ids: list[str],
+        scope_catalog_groups: list[WorkflowScopeCatalogGroup],
+    ) -> list[str]:
+        selected_group_set = {
+            str(group_id).strip()
+            for group_id in group_ids
+            if str(group_id).strip()
+        }
 
+        if not selected_group_set:
+            return []
+
+        seen: set[str] = set()
+        operation_ids: list[str] = []
+
+        for group in scope_catalog_groups:
+            group_id = str(group.group_id).strip()
+            if group_id not in selected_group_set:
+                continue
+
+            for operation_id in list(group.operation_ids or []):
+                cleaned_operation_id = str(operation_id).strip()
+                if not cleaned_operation_id:
+                    continue
+                if cleaned_operation_id in seen:
+                    continue
+
+                seen.add(cleaned_operation_id)
+                operation_ids.append(cleaned_operation_id)
+
+        return operation_ids
     def _infer_group_ids_from_operation_ids(
         self,
         *,
@@ -1386,8 +1420,10 @@ class TestOrchestrator:
         canonical_command_override: str | None = None,
         understanding_explanation_override: str | None = None,
         scope_note: str | None = None,
+        all_operations: list[Any] | None = None,
     ) -> ReviewWorkflowResult:
         plan = understanding.plan
+        all_available_operations = list(all_operations or operations)
 
         logger = bind_logger(
             self._logger,
@@ -1427,7 +1463,9 @@ class TestOrchestrator:
                 filtered_operations = filtered_operations[: plan.limit_endpoints]
 
         logger.info(
-            f"Filtered operations count={len(filtered_operations)} from total={len(operations)}."
+            "Filtered operations count="
+            f"{len(filtered_operations)} from input_scope={len(operations)}, "
+            f"all_available={len(all_available_operations)}."
         )
 
         if not filtered_operations:
@@ -1437,6 +1475,11 @@ class TestOrchestrator:
         operation_contexts = [
             self._build_operation_context(operation)
             for operation in filtered_operations
+        ]
+
+        all_operation_contexts = [
+            self._build_operation_context(operation)
+            for operation in all_available_operations
         ]
 
         config = self._graph_config(thread_id)
@@ -1453,10 +1496,7 @@ class TestOrchestrator:
                 "test_types": [t.value for t in plan.test_types],
                 "ignore_fields": list(plan.ignore_fields),
             },
-            "all_operation_contexts": [
-                self._build_operation_context(operation)
-                for operation in operations
-            ],
+            "all_operation_contexts": all_operation_contexts,
             "operation_contexts": operation_contexts,
             "feedback_history": [],
             "review_round": 0,

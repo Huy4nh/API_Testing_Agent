@@ -1,0 +1,119 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "755e2d90ef0049d084cbaece492403a5",
+    "thread_id": "wf-39652b53c7414734815822d8668847fe",
+    "phase": "cancelled",
+    "current_target": "img_local",
+    "assistant_message": "Tôi đã hủy phiên report này và xóa toàn bộ artifact staging được theo dõi. Không có dữ liệu nào được finalize/persist.",
+    "status_message": "Workflow `755e2d90ef0049d084cbaece492403a5` đang ở phase `cancelled`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+    "selected_target": "img_local",
+    "candidate_targets": [
+      "img_api_staging",
+      "img_local",
+      "img_api_prod"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Bạn muốn kiểm thử endpoint nào? Hệ thống đã xác định được endpoint **POST /img** (sinh ảnh) thuộc target `img_local`. Bạn có muốn kiểm thử đúng endpoint này không, hay bạn muốn mở rộng/thu hẹp phạm vi kiểm thử?",
+    "scope_confirmation_summary": "Người dùng xác nhận muốn test sinh ảnh (img), tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).",
+    "canonical_command": "test target img_local /img POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test sinh ảnh (img), tương ứng với group \"img\" và operation \"image_generate_img_post\" (POST /img - Image Generate).",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "start_new_workflow",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": true,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_local\\wf-39652b53c7414734815822d8668847fe\\round_01.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_local\\wf-39652b53c7414734815822d8668847fe\\round_01.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "execution_report_json",
+        "path": "reports\\execution_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\execution_batch.json",
+        "stage": "execution",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "execution_report_md",
+        "path": "reports\\execution_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\execution_batch.md",
+        "stage": "execution",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "validation_report_json",
+        "path": "reports\\validation_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\validation_batch.json",
+        "stage": "validation",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "validation_report_md",
+        "path": "reports\\validation_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\validation_batch.md",
+        "stage": "validation",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_local\\wf-39652b53c7414734815822d8668847fe\\round_01.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_local\\wf-39652b53c7414734815822d8668847fe\\round_01.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "execution_report_json",
+      "path": "reports\\execution_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\execution_batch.json",
+      "stage": "execution",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "execution_report_md",
+      "path": "reports\\execution_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\execution_batch.md",
+      "stage": "execution",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "validation_report_json",
+      "path": "reports\\validation_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\validation_batch.json",
+      "stage": "validation",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "validation_report_md",
+      "path": "reports\\validation_runs\\img_local\\wf-39652b53c7414734815822d8668847fe\\validation_batch.md",
+      "stage": "validation",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

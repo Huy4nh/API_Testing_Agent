@@ -31,7 +31,6 @@ from api_testing_agent.core.validator import Validator
 from api_testing_agent.logging_config import bind_logger, get_logger
 from api_testing_agent.manual_test.report_testcase.manual_review_workflow_test import (
     _build_final_report_payload,
-    _normalize_review_input,
     _persist_final_report_to_sqlite,
     _write_execution_reports,
     _write_staged_final_reports,
@@ -118,16 +117,49 @@ class WorkflowRuntimeBridge:
         )
         logger.info("Normalizing review input through runtime bridge.")
 
-        action, feedback = _normalize_review_input(
-            raw_action,
-            hybrid_ai=self._review_action_ai,
-            thread_id=thread_id,
-            target_name=target_name,
-            preview_text=preview_text,
-            feedback_history=feedback_history,
+        cleaned = raw_action.strip()
+        if not cleaned:
+            return "revise", ""
+
+        try:
+            ai_result = self._review_action_ai.decide_review_action(
+                thread_id=thread_id,
+                target_name=target_name,
+                user_text=cleaned,
+                preview_text=preview_text,
+                feedback_history=feedback_history,
+            )
+        except Exception as exc:
+            logger.exception(f"Review action classification failed: {exc}")
+            return "revise", cleaned
+
+        action = str(ai_result.get("action", "revise")).strip().lower()
+        confidence = self._coerce_float(ai_result.get("confidence"), default=0.5)
+        reason = str(ai_result.get("reason", "") or "").strip()
+
+        if action not in {"approve", "revise", "cancel"}:
+            action = "revise"
+
+        logger.info(
+            "Review input action classified.",
+            extra={
+                "normalized_action": action,
+                "confidence": confidence,
+                "reason": reason,
+            },
         )
-        logger.info(f"Normalized review action={action!r}.")
-        return action, feedback
+
+        if action == "approve":
+            return "approve", ""
+
+        if action == "cancel":
+            return "cancel", ""
+
+        # Important:
+        # Do not rewrite/refine the user's revise feedback in this bridge.
+        # Scope mutation must be handled by FeedbackScopeAgent/FeedbackScopeRefiner
+        # with the actual operation catalog inside the review core.
+        return "revise", cleaned
 
     def run_post_approval(
         self,
@@ -170,8 +202,12 @@ class WorkflowRuntimeBridge:
             batch_result=execution_batch_result,
         )
 
-        approved_payload["execution_report_json_path"] = execution_report_paths["json_path"]
-        approved_payload["execution_report_md_path"] = execution_report_paths["md_path"]
+        approved_payload["execution_report_json_path"] = execution_report_paths[
+            "json_path"
+        ]
+        approved_payload["execution_report_md_path"] = execution_report_paths[
+            "md_path"
+        ]
 
         validation_batch_result = self._validator.validate_batch(execution_batch_result)
 
@@ -192,8 +228,12 @@ class WorkflowRuntimeBridge:
             batch_result=validation_batch_result,
         )
 
-        approved_payload["validation_report_json_path"] = validation_report_paths["json_path"]
-        approved_payload["validation_report_md_path"] = validation_report_paths["md_path"]
+        approved_payload["validation_report_json_path"] = validation_report_paths[
+            "json_path"
+        ]
+        approved_payload["validation_report_md_path"] = validation_report_paths[
+            "md_path"
+        ]
 
         final_report_payload = _build_final_report_payload(
             approved_payload=approved_payload,
@@ -212,8 +252,12 @@ class WorkflowRuntimeBridge:
             final_report_payload=final_report_payload,
         )
 
-        final_report_payload["links"]["final_report_json_path"] = staged_final_report_paths["json_path"]
-        final_report_payload["links"]["final_report_md_path"] = staged_final_report_paths["md_path"]
+        final_report_payload["links"]["final_report_json_path"] = (
+            staged_final_report_paths["json_path"]
+        )
+        final_report_payload["links"]["final_report_md_path"] = (
+            staged_final_report_paths["md_path"]
+        )
 
         interaction_update = self.start_report_interaction_session(
             final_report_payload=final_report_payload,
@@ -272,18 +316,32 @@ class WorkflowRuntimeBridge:
             "target_name": target_name,
             "original_request": original_request,
             "canonical_command": approved_payload.get("canonical_command"),
-            "understanding_explanation": approved_payload.get("understanding_explanation"),
+            "understanding_explanation": approved_payload.get(
+                "understanding_explanation"
+            ),
             "candidate_targets": list(candidate_targets_history or []),
             "target_selection_question": target_selection_question,
             "review_feedback_history": list(review_feedback_history or []),
             "draft_report_json_path": approved_payload.get("draft_report_json_path"),
             "draft_report_md_path": approved_payload.get("draft_report_md_path"),
-            "execution_report_json_path": approved_payload.get("execution_report_json_path"),
-            "execution_report_md_path": approved_payload.get("execution_report_md_path"),
-            "validation_report_json_path": approved_payload.get("validation_report_json_path"),
-            "validation_report_md_path": approved_payload.get("validation_report_md_path"),
-            "staged_final_report_json_path": final_report_payload["links"]["final_report_json_path"],
-            "staged_final_report_md_path": final_report_payload["links"]["final_report_md_path"],
+            "execution_report_json_path": approved_payload.get(
+                "execution_report_json_path"
+            ),
+            "execution_report_md_path": approved_payload.get(
+                "execution_report_md_path"
+            ),
+            "validation_report_json_path": approved_payload.get(
+                "validation_report_json_path"
+            ),
+            "validation_report_md_path": approved_payload.get(
+                "validation_report_md_path"
+            ),
+            "staged_final_report_json_path": final_report_payload["links"][
+                "final_report_json_path"
+            ],
+            "staged_final_report_md_path": final_report_payload["links"][
+                "final_report_md_path"
+            ],
             "final_report_json_path": None,
             "final_report_md_path": None,
             "final_report_markdown": Path(
@@ -307,7 +365,10 @@ class WorkflowRuntimeBridge:
         }
 
         config = report_graph_config(thread_id)
-        self._report_graph.invoke(cast(ReportInteractionState, initial_state), config=config)
+        self._report_graph.invoke(
+            cast(ReportInteractionState, initial_state),
+            config=config,
+        )
 
         snapshot = self._report_graph.get_state(config)
         values = dict(snapshot.values)
@@ -456,3 +517,9 @@ class WorkflowRuntimeBridge:
                 if str(msg.get("role", "")).lower() == "assistant"
             ]
         )
+
+    def _coerce_float(self, value: Any, *, default: float) -> float:
+        try:
+            return max(0.0, min(1.0, float(value)))
+        except Exception:
+            return default

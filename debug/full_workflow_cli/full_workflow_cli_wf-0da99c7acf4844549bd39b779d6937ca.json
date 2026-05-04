@@ -1,0 +1,189 @@
+{
+  "workflow_id": "65bdd1da9deb4ab0aee4833540f9b7f1",
+  "thread_id": "wf-0da99c7acf4844549bd39b779d6937ca",
+  "phase": "pending_review",
+  "assistant_message": "Review round: 2\nOriginal request: test sinh ảnh của imgg\nCanonical command: test target img_local /img POST positive missing invalid\nUnderstanding: Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test chức năng sinh ảnh của img, tương ứng với operation image_generate_img_post (POST /img) trong group img.\nScope note: Không áp dụng được feedback 'thêm youtube (yt) vào' vì không map được vào operation hiện có. Giữ nguyên phạm vi hiện tại.\nActive operations: POST /img\n\nFeedback history:\n- 1. thêm youtube (yt) vào\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] Gửi request hợp lệ với content là một chuỗi văn bản mô tả ảnh\n      why: Test case cơ bản để kiểm tra API sinh ảnh hoạt động đúng khi truyền đủ trường required và các trường optional\n      expect: [200]\n   2. [missing_required] Gửi request thiếu trường 'content' bắt buộc\n      why: Trường 'content' là required trong schema ImgInfo. Bỏ trường này để kiểm tra server validate đúng không\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request với 'quality' là chuỗi thay vì integer\n      why: Trường 'quality' phải là integer hoặc null. Truyền vào chuỗi 'high' để kiểm tra validation type\n      expect: [422]\n   4. [unauthorized_or_forbidden] Operation không yêu cầu auth nên skip\n      why: Theo spec, auth_required=false, không có cơ chế xác thực nào được định nghĩa cho operation này\n      skip: true\n      skip_reason: Operation không yêu cầu xác thực (auth_required=false), không phù hợp để test unauthorized/forbidden\n   5. [resource_not_found] Operation không có path parameter resource identifier nên skip\n      why: Path /img không có path parameter nào đại diện cho resource ID, nên không thể test not found bằng cách truyền ID không tồn tại\n      skip: true\n      skip_reason: Không có path parameter resource identifier trong operation này, không phù hợp để test resource_not_found\n",
+  "status_message": "Workflow `65bdd1da9deb4ab0aee4833540f9b7f1` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_api_staging",
+    "img_local",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng xác nhận muốn test chức năng sinh ảnh của img, tương ứng với operation image_generate_img_post (POST /img) trong group img.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Bạn muốn kiểm thử chức năng sinh ảnh tại endpoint **POST /img** (thuộc nhóm 'Img') phải không? Ngoài ra, bạn có muốn bao gồm các endpoint khác trong danh sách sau không?\n- POST /FB (nhóm Fb)\n- POST /post/x (nhóm Post)\n- POST /X (nhóm X)\n- POST /X/content (nhóm X)\n- POST /YT (nhóm Yt)\n\nVui lòng xác nhận hoặc điều chỉnh phạm vi kiểm thử mong muốn.",
+  "scope_confirmation_summary": "Người dùng xác nhận muốn test chức năng sinh ảnh của img, tương ứng với operation image_generate_img_post (POST /img) trong group img.",
+  "scope_selection_mode": "operations",
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [
+    "img"
+  ],
+  "selected_scope_operation_ids": [
+    "image_generate_img_post"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "applied_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "latest_scope_selection_source": null,
+  "latest_scope_agent_action": null,
+  "latest_scope_agent_reason": null,
+  "last_scope_user_message": "đúng",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-0da99c7acf4844549bd39b779d6937ca\\round_02.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-0da99c7acf4844549bd39b779d6937ca\\round_02.md",
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "approve",
+    "revise",
+    "show_review_scope",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

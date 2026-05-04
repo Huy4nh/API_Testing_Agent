@@ -1,0 +1,73 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual-cli",
+    "session_id": "headless-workflow-cli",
+    "user_id": "local-dev-user",
+    "org_id": "local-dev-org"
+  },
+  "workflow": {
+    "workflow_id": "a2ea90516dc945969c5c516a1e4023f0",
+    "thread_id": "wf-2b10cc2a3a8745859e8810a678639159",
+    "phase": "pending_review",
+    "current_target": "img_local",
+    "assistant_message": "Review round: 2\nOriginal request: test sinh ảnh và fb của img\nCanonical command: test target img_local /img POST /FB POST positive missing invalid\nUnderstanding: Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, fb. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /FB. Lý do: Người dùng xác nhận muốn test sinh ảnh (group img) và fb (group fb), tương ứng với các operation image_generate_img_post và fb_get_content_FB_post.\nScope note: Không áp dụng được feedback 'thêm group yt vào scope test' vì không map được vào operation hiện có. Giữ nguyên phạm vi hiện tại.\nActive operations: POST /img, POST /FB\n\nFeedback history:\n- 1. Bỏ group fb (POST /FB) khỏi scope test, thêm group yt vào scope test.\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] Gửi request hợp lệ với content là URL hợp lệ, kèm prompt và quality\n      why: Cung cấp đầy đủ các field hợp lệ để kiểm tra luồng sinh ảnh thành công\n      expect: [200]\n   2. [missing_required] Gửi request thiếu field bắt buộc 'content'\n      why: Field 'content' là required, bỏ qua để kiểm tra validation error\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request với 'quality' là chuỗi thay vì integer\n      why: Field 'quality' cần là integer hoặc null, truyền chuỗi để kiểm tra type validation\n      expect: [422]\n   4. [unauthorized_or_forbidden] Không áp dụng vì operation không yêu cầu xác thực\n      why: auth_required=false, không có cơ chế auth nào cần kiểm tra\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), test unauthorized không phù hợp\n   5. [resource_not_found] Không áp dụng vì không có path parameter đại diện resource identifier\n      why: Endpoint /img không có path param nào, không thể test resource not found\n      skip: true\n      skip_reason: Không có path parameter đại diện resource identifier trong operation này\n\n2. POST /FB (operation_id=fb_get_content_FB_post)\n   1. [positive] Gửi request hợp lệ với data là một URL Facebook hợp lệ\n      why: Test case cơ bản với field 'data' có giá trị URL hợp lệ để xác nhận API hoạt động đúng\n      expect: [200]\n   2. [missing_required] Gửi request thiếu field 'data' bắt buộc\n      why: Field 'data' là required trong schema, thiếu nó phải trả về lỗi validation\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request với data là số nguyên thay vì string\n      why: Field 'data' phải là string (URL hoặc text), gửi số nguyên để kiểm tra validation\n      expect: [422]\n   4. [unauthorized_or_forbidden] Operation POST /FB không yêu cầu authentication\n      why: auth_required=false nên không có case unauthorized phù hợp\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), skip unauthorized case\n   5. [resource_not_found] Operation POST /FB không có path parameter định danh resource\n      why: Không có path parameter nào đại diện resource identifier nên không thể test not found\n      skip: true\n      skip_reason: Không có path parameter định danh resource trong endpoint này, skip not found case\n",
+    "status_message": "Workflow `a2ea90516dc945969c5c516a1e4023f0` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST /FB POST positive missing invalid`.",
+    "selected_target": "img_local",
+    "candidate_targets": [
+      "img_api_staging",
+      "img_local"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Yêu cầu của bạn đã được hiểu là kiểm thử 2 operations sau thuộc target **img_local**:\n- `POST /img` (sinh ảnh)\n- `POST /FB` (fb)\n\nBạn có muốn tiếp tục với phạm vi này không, hay cần điều chỉnh thêm (ví dụ: thêm/bớt endpoint, thay đổi method, hoặc chỉ test một trong hai)?",
+    "scope_confirmation_summary": "Người dùng xác nhận muốn test sinh ảnh (group img) và fb (group fb), tương ứng với các operation image_generate_img_post và fb_get_content_FB_post.",
+    "canonical_command": "test target img_local /img POST /FB POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, fb. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /FB. Lý do: Người dùng xác nhận muốn test sinh ảnh (group img) và fb (group fb), tương ứng với các operation image_generate_img_post và fb_get_content_FB_post.",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "approve",
+      "revise",
+      "show_review_scope",
+      "cancel",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_local\\wf-2b10cc2a3a8745859e8810a678639159\\round_02.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_local\\wf-2b10cc2a3a8745859e8810a678639159\\round_02.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_local\\wf-2b10cc2a3a8745859e8810a678639159\\round_02.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_local\\wf-2b10cc2a3a8745859e8810a678639159\\round_02.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

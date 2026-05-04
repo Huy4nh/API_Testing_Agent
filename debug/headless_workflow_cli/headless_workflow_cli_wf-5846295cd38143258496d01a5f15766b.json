@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual_cli",
+    "session_id": "manual_headless_workflow_cli",
+    "user_id": "local_user",
+    "org_id": "local_org"
+  },
+  "workflow": {
+    "workflow_id": "5eb1edc71c594464ae38f505128933d5",
+    "thread_id": "wf-5846295cd38143258496d01a5f15766b",
+    "phase": "pending_review",
+    "current_target": "img_api_prod",
+    "assistant_message": "Bạn đang ở bước review. Bạn có thể approve, yêu cầu revise, hỏi về scope hiện tại, hoặc cancel.",
+    "status_message": "Workflow `5eb1edc71c594464ae38f505128933d5` đang ở phase `pending_review`. Target: `img_api_prod`. Canonical command: `test target img_api_prod /img POST /FB POST /YT POST /X POST /X/content POST /post/x POST positive missing invalid`.",
+    "selected_target": "img_api_prod",
+    "candidate_targets": [
+      "img_local",
+      "img_api_staging",
+      "img_api_prod"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Do you want to specifically test the **POST /img** endpoint (belonging to the **Img** group) on the **img_api_prod** target, or do you want to test all other endpoints in this target? Please confirm the testing scope.",
+    "scope_confirmation_summary": "Đã áp dụng gợi ý các nhóm nên test trước.",
+    "canonical_command": "test target img_api_prod /img POST /FB POST /YT POST /X POST /X/content POST /post/x POST positive missing invalid",
+    "understanding_explanation": "Đã xác định target là `img_api_prod` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, post, x, fb, yt. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /FB, HTTPMETHOD.POST /YT, .... Lý do: Đã áp dụng gợi ý các nhóm nên test trước.",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "approve",
+      "revise",
+      "show_review_scope",
+      "cancel",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_api_prod\\wf-5846295cd38143258496d01a5f15766b\\round_01.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_api_prod\\wf-5846295cd38143258496d01a5f15766b\\round_01.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_api_prod\\wf-5846295cd38143258496d01a5f15766b\\round_01.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_api_prod\\wf-5846295cd38143258496d01a5f15766b\\round_01.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}
