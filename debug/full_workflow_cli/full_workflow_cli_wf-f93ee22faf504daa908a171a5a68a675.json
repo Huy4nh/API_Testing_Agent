@@ -1,0 +1,36 @@
+{
+  "workflow_id": "8f161c0090af4858a8cd673296a33121",
+  "thread_id": "wf-f93ee22faf504daa908a171a5a68a675",
+  "phase": "finalized",
+  "assistant_message": "Tôi đã chốt final report. File chính thức nằm tại `reports\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.json` và `reports\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.md`.",
+  "status_message": "Workflow `8f161c0090af4858a8cd673296a33121` đang ở phase `finalized`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`. Staged final report: `reports\\_staging\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.md`. Final report: `reports\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.md`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.",
+  "preferred_language": "vi",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\round_01.md",
+  "execution_report_json_path": "reports\\execution_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\validation_batch.md",
+  "staged_final_report_json_path": "reports\\_staging\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.json",
+  "staged_final_report_md_path": "reports\\_staging\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.md",
+  "final_report_json_path": "reports\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.json",
+  "final_report_md_path": "reports\\final_runs\\img_local\\wf-f93ee22faf504daa908a171a5a68a675\\final_summary.md",
+  "rerun_user_text": null,
+  "finalized": true,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "start_new_workflow",
+    "status",
+    "help"
+  ]
+}

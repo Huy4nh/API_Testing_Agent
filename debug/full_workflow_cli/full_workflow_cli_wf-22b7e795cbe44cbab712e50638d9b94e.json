@@ -1,0 +1,203 @@
+{
+  "workflow_id": "777f2da60a594fc3b344d208429772c5",
+  "thread_id": "wf-22b7e795cbe44cbab712e50638d9b94e",
+  "phase": "pending_review",
+  "assistant_message": "Review round: 3\nOriginal request: hãy test target img đi\nCanonical command: test target img_local /img POST /post/x POST positive missing invalid\nUnderstanding: Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.\nScope note: Feedback đã mở rộng phạm vi test theo yêu cầu: thêm chức năng Post vào\nActive operations: POST /img, POST /post/x\n\nFeedback history:\n- 1. thêm method POST vào danh sách active operations hoặc bổ sung thêm test case liên quan đến POST nếu còn thiếu\n- 2. thêm chức năng Post vào\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] POST /img với content hợp lệ (URL), prompt và quality tùy chọn\n      why: Gửi request đầy đủ với content là URL hợp lệ, prompt và quality để kiểm tra response thành công 200\n      expect: [200]\n   2. [missing_required] POST /img thiếu trường 'content' bắt buộc\n      why: Bỏ trường 'content' bắt buộc để kiểm tra server trả về lỗi validation 422\n      expect: [422]\n   3. [invalid_type_or_format] POST /img với quality là string thay vì integer\n      why: Truyền quality là chuỗi 'high' thay vì integer để kiểm tra validation type của server\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /img không yêu cầu auth - skip\n      why: Operation này có auth_required=false nên không cần test unauthorized\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), test unauthorized không có ý nghĩa\n   5. [resource_not_found] POST /img không có path parameter - skip\n      why: Endpoint /img không có path parameter đại diện resource identifier nên không có case not found\n      skip: true\n      skip_reason: Endpoint không có path parameter để tham chiếu resource cụ thể, không thể tạo not found case\n\n2. POST /post/x (operation_id=x_post_post_x_post)\n   1. [positive] Gửi POST /post/x với đầy đủ các field hợp lệ bao gồm content, drive_img_link và prompt\n      why: Test case cơ bản kiểm tra happy path khi cung cấp đầy đủ dữ liệu hợp lệ\n      expect: [200]\n   2. [missing_required] Gửi POST /post/x thiếu field bắt buộc 'drive_img_link'\n      why: drive_img_link là field required, bỏ đi sẽ gây lỗi validation\n      expect: [422]\n   3. [invalid_type_or_format] Gửi POST /post/x với drive_img_link là số nguyên thay vì string URI\n      why: drive_img_link yêu cầu kiểu string (có thể là URI), truyền số nguyên sẽ gây lỗi kiểu dữ liệu\n      expect: [422]\n   4. [unauthorized_or_forbidden] Skip: operation không yêu cầu xác thực\n      why: auth_required=false nên không có case unauthorized/forbidden phù hợp\n      skip: true\n      skip_reason: Operation không yêu cầu auth (auth_required=false), unauthorized case không áp dụng\n   5. [resource_not_found] Skip: không có path parameter đại diện resource identifier\n      why: Endpoint /post/x không có path param nên không thể tạo case resource not found\n      skip: true\n      skip_reason: Không có path parameter nào trong operation này nên không thể simulate resource not found\n",
+  "status_message": "Workflow `777f2da60a594fc3b344d208429772c5` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST /post/x POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST /post/x POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Hiện có 5 nhóm chức năng / 6 operation. Bạn muốn test toàn bộ, chỉ một vài nhóm, hay một số operation cụ thể?",
+  "scope_confirmation_summary": "Người dùng chỉ chọn 2 nhóm: img và post, tương ứng với group_id=img và group_id=post trong danh sách có sẵn.",
+  "scope_selection_mode": "groups",
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [
+    "img",
+    "post"
+  ],
+  "selected_scope_operation_ids": [
+    "image_generate_img_post",
+    "x_post_post_x_post"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": "prioritize",
+    "group_ids": [
+      "img",
+      "post"
+    ],
+    "operation_ids": [
+      "image_generate_img_post",
+      "x_post_post_x_post"
+    ],
+    "rationale": "Người dùng muốn test target \"img\" và chỉ cần 2 testcase. Nhóm \"img\" là nhóm cốt lõi trực tiếp liên quan đến target, và \"post\" là nhóm hỗ trợ thao tác gửi dữ liệu phổ biến. Các nhóm fb, x, yt là các nhóm phụ/niche không liên quan trực tiếp đến yêu cầu.",
+    "follow_up_question": "Bạn có muốn chạy 2 testcase cho nhóm \"img\" và \"post\" trước không? Nếu cần điều chỉnh thêm, hãy cho tôi biết!",
+    "source_user_message": "test trước theo gợi ý của bạn đi",
+    "rendered_message": "Gợi ý các nhóm nên test trước:\n- Img\n  Operations related to img\n- Post\n  Operations related to post\n\nLý do: Người dùng muốn test target \"img\" và chỉ cần 2 testcase. Nhóm \"img\" là nhóm cốt lõi trực tiếp liên quan đến target, và \"post\" là nhóm hỗ trợ thao tác gửi dữ liệu phổ biến. Các nhóm fb, x, yt là các nhóm phụ/niche không liên quan trực tiếp đến yêu cầu.\n\nBạn có muốn chạy 2 testcase cho nhóm \"img\" và \"post\" trước không? Nếu cần điều chỉnh thêm, hãy cho tôi biết!"
+  },
+  "applied_scope_recommendation": {
+    "mode": "prioritize",
+    "group_ids": [
+      "img",
+      "post"
+    ],
+    "operation_ids": [
+      "image_generate_img_post",
+      "x_post_post_x_post"
+    ],
+    "rationale": "Người dùng muốn test target \"img\" và chỉ cần 2 testcase. Nhóm \"img\" là nhóm cốt lõi trực tiếp liên quan đến target, và \"post\" là nhóm hỗ trợ thao tác gửi dữ liệu phổ biến. Các nhóm fb, x, yt là các nhóm phụ/niche không liên quan trực tiếp đến yêu cầu.",
+    "follow_up_question": "Bạn có muốn chạy 2 testcase cho nhóm \"img\" và \"post\" trước không? Nếu cần điều chỉnh thêm, hãy cho tôi biết!",
+    "source_user_message": "test trước theo gợi ý của bạn đi",
+    "rendered_message": "Gợi ý các nhóm nên test trước:\n- Img\n  Operations related to img\n- Post\n  Operations related to post\n\nLý do: Người dùng muốn test target \"img\" và chỉ cần 2 testcase. Nhóm \"img\" là nhóm cốt lõi trực tiếp liên quan đến target, và \"post\" là nhóm hỗ trợ thao tác gửi dữ liệu phổ biến. Các nhóm fb, x, yt là các nhóm phụ/niche không liên quan trực tiếp đến yêu cầu.\n\nBạn có muốn chạy 2 testcase cho nhóm \"img\" và \"post\" trước không? Nếu cần điều chỉnh thêm, hãy cho tôi biết!"
+  },
+  "latest_scope_selection_source": "applied_scope_recommendation",
+  "latest_scope_agent_action": "apply_scope_recommendation",
+  "latest_scope_agent_reason": "Người dùng muốn test target \"img\" và chỉ cần 2 testcase. Nhóm \"img\" là nhóm cốt lõi trực tiếp liên quan đến target, và \"post\" là nhóm hỗ trợ thao tác gửi dữ liệu phổ biến. Các nhóm fb, x, yt là các nhóm phụ/niche không liên quan trực tiếp đến yêu cầu.",
+  "last_scope_user_message": "đúng",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-22b7e795cbe44cbab712e50638d9b94e\\round_03.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-22b7e795cbe44cbab712e50638d9b94e\\round_03.md",
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "approve",
+    "revise",
+    "show_review_scope",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

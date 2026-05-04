@@ -6,6 +6,8 @@ from typing import Any
 
 from typing_extensions import TypedDict
 
+from api_testing_agent.tasks.language_support import SupportedLanguage
+
 
 class ReportUserIntent(str, Enum):
     ASK_REPORT_QUESTION = "ask_report_question"
@@ -32,9 +34,12 @@ class ReportMessage(TypedDict):
 
 
 class ReportInteractionState(TypedDict, total=False):
+    # Core identity
     thread_id: str
     target_name: str
+    preferred_language: SupportedLanguage
 
+    # Request / review context
     original_request: str | None
     canonical_command: str | None
     understanding_explanation: str | None
@@ -43,6 +48,7 @@ class ReportInteractionState(TypedDict, total=False):
     target_selection_question: str | None
     review_feedback_history: list[str]
 
+    # Draft / execution / validation / final report artifact links
     draft_report_json_path: str | None
     draft_report_md_path: str | None
     execution_report_json_path: str | None
@@ -55,30 +61,34 @@ class ReportInteractionState(TypedDict, total=False):
     final_report_json_path: str | None
     final_report_md_path: str | None
 
+    # Report payloads / rendered content
     final_report_markdown: str
     final_report_data: dict[str, Any]
 
     execution_batch_result: Any
     validation_batch_result: Any
 
+    # Conversation state
     messages: list[ReportMessage]
     latest_user_message: str
+    assistant_response: str
+    shareable_summary: str | None
 
+    # Intent tracking
     last_intent: str
     last_intent_reason: str
     last_intent_confidence: float
+    pending_revision_instruction: str | None
+    pending_rerun_instruction: str | None
 
-    shareable_summary: str | None
-    assistant_response: str
-
+    # Artifact tracking
     artifact_paths: list[str]
 
+    # Session lifecycle
     finalized: bool
     cancelled: bool
     rerun_requested: bool
     rerun_user_text: str | None
-
-    pending_revision_instruction: str | None
 
 
 @dataclass(frozen=True)

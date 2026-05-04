@@ -1,0 +1,772 @@
+{
+  "workflow_id": "dc9c12b04c1048a3b7eb16a9ae6db4ff",
+  "thread_id": "wf-2123633351714063aa4c9f794ec2c21b",
+  "phase": "finalized",
+  "assistant_message": "Tôi đã chốt final report. File chính thức nằm tại `reports\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.json` và `reports\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.md`.",
+  "status_message": "Workflow `dc9c12b04c1048a3b7eb16a9ae6db4ff` đang ở phase `finalized`. Target: `coingecko_demo`. Canonical command: `test target coingecko_demo /coins/list GET /coins/markets GET /coins/{id} GET /coins/{id}/tickers GET /coins/{id}/history GET /coins/{id}/market_chart GET /coins/{id}/market_chart/range GET /coins/{id}/ohlc GET positive missing invalid`. Staged final report: `reports\\_staging\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.md`. Final report: `reports\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.md`.",
+  "selected_target": "coingecko_demo",
+  "candidate_targets": [
+    "coingecko_demo",
+    "coingecko_onchain_demo"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target coingecko_demo /coins/list GET /coins/markets GET /coins/{id} GET /coins/{id}/tickers GET /coins/{id}/history GET /coins/{id}/market_chart GET /coins/{id}/market_chart/range GET /coins/{id}/ohlc GET positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'coingecko_demo'. User không chỉ rõ chức năng cụ thể nên hệ thống sẽ test toàn bộ chức năng của target.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Hiện có 14 nhóm chức năng / 41 operation. Bạn muốn test toàn bộ, chỉ một vài nhóm, hay một số operation cụ thể?",
+  "scope_confirmation_summary": "Người dùng yêu cầu \"test coin\", điều này rõ ràng chỉ đến nhóm \"coins\" trong CoinGecko API, bao gồm các thao tác liên quan đến dữ liệu coin như danh sách coin, thị trường, lịch sử giá, biểu đồ, v.v.",
+  "scope_selection_mode": "groups",
+  "scope_catalog_groups": [
+    {
+      "group_id": "asset platforms",
+      "title": "Asset Platforms",
+      "description": "Operations related to asset platforms",
+      "operation_ids": [
+        "asset-platforms-list",
+        "token-lists"
+      ],
+      "tags": [
+        "Asset Platforms"
+      ]
+    },
+    {
+      "group_id": "categories",
+      "title": "Categories",
+      "description": "Operations related to categories",
+      "operation_ids": [
+        "coins-categories-list",
+        "coins-categories"
+      ],
+      "tags": [
+        "Categories"
+      ]
+    },
+    {
+      "group_id": "coins",
+      "title": "Coins",
+      "description": "Operations related to coins",
+      "operation_ids": [
+        "coins-list",
+        "coins-markets",
+        "coins-id",
+        "coins-id-tickers",
+        "coins-id-history",
+        "coins-id-market-chart",
+        "coins-id-market-chart-range",
+        "coins-id-ohlc"
+      ],
+      "tags": [
+        "Coins"
+      ]
+    },
+    {
+      "group_id": "contract",
+      "title": "Contract",
+      "description": "Operations related to contract",
+      "operation_ids": [
+        "coins-contract-address",
+        "contract-address-market-chart",
+        "contract-address-market-chart-range"
+      ],
+      "tags": [
+        "Contract"
+      ]
+    },
+    {
+      "group_id": "derivatives",
+      "title": "Derivatives",
+      "description": "Operations related to derivatives",
+      "operation_ids": [
+        "derivatives-tickers",
+        "derivatives-exchanges",
+        "derivatives-exchanges-id",
+        "derivatives-exchanges-list"
+      ],
+      "tags": [
+        "Derivatives"
+      ]
+    },
+    {
+      "group_id": "exchange rates",
+      "title": "Exchange Rates",
+      "description": "Operations related to exchange rates",
+      "operation_ids": [
+        "exchange-rates"
+      ],
+      "tags": [
+        "Exchange Rates"
+      ]
+    },
+    {
+      "group_id": "exchanges",
+      "title": "Exchanges",
+      "description": "Operations related to exchanges",
+      "operation_ids": [
+        "exchanges",
+        "exchanges-list",
+        "exchanges-id",
+        "exchanges-id-tickers",
+        "exchanges-id-volume-chart"
+      ],
+      "tags": [
+        "Exchanges"
+      ]
+    },
+    {
+      "group_id": "global",
+      "title": "Global",
+      "description": "Operations related to global",
+      "operation_ids": [
+        "crypto-global",
+        "global-DeFi"
+      ],
+      "tags": [
+        "Global"
+      ]
+    },
+    {
+      "group_id": "nfts (beta)",
+      "title": "Nfts (Beta)",
+      "description": "Operations related to nfts (beta)",
+      "operation_ids": [
+        "nfts-list",
+        "nfts-id",
+        "nfts-contract-address"
+      ],
+      "tags": [
+        "NFTs (Beta)"
+      ]
+    },
+    {
+      "group_id": "ping",
+      "title": "Ping",
+      "description": "Operations related to ping",
+      "operation_ids": [
+        "ping-server"
+      ],
+      "tags": [
+        "Ping"
+      ]
+    },
+    {
+      "group_id": "public treasury",
+      "title": "Public Treasury",
+      "description": "Operations related to public treasury",
+      "operation_ids": [
+        "entities-list",
+        "companies-public-treasury",
+        "public-treasury-entity",
+        "public-treasury-entity-chart",
+        "public-treasury-transaction-history"
+      ],
+      "tags": [
+        "Public Treasury"
+      ]
+    },
+    {
+      "group_id": "search",
+      "title": "Search",
+      "description": "Operations related to search",
+      "operation_ids": [
+        "search-data"
+      ],
+      "tags": [
+        "Search"
+      ]
+    },
+    {
+      "group_id": "simple",
+      "title": "Simple",
+      "description": "Operations related to simple",
+      "operation_ids": [
+        "simple-price",
+        "simple-token-price",
+        "simple-supported-currencies"
+      ],
+      "tags": [
+        "Simple"
+      ]
+    },
+    {
+      "group_id": "trending",
+      "title": "Trending",
+      "description": "Operations related to trending",
+      "operation_ids": [
+        "trending-search"
+      ],
+      "tags": [
+        "Trending"
+      ]
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "asset-platforms-list",
+      "method": "GET",
+      "path": "/asset_platforms",
+      "group_id": "asset platforms",
+      "group_title": "Asset Platforms",
+      "summary": "Asset Platforms List (ID Map)",
+      "description": "Call GET /asset_platforms.",
+      "tags": [
+        "Asset Platforms"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "token-lists",
+      "method": "GET",
+      "path": "/token_lists/{asset_platform_id}/all.json",
+      "group_id": "asset platforms",
+      "group_title": "Asset Platforms",
+      "summary": "Token Lists by Asset Platform ID",
+      "description": "Call GET /token_lists/{asset_platform_id}/all.json.",
+      "tags": [
+        "Asset Platforms"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-categories",
+      "method": "GET",
+      "path": "/coins/categories",
+      "group_id": "categories",
+      "group_title": "Categories",
+      "summary": "Coins Categories List with Market Data",
+      "description": "Coins Categories List with Market Data.",
+      "tags": [
+        "Categories"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-categories-list",
+      "method": "GET",
+      "path": "/coins/categories/list",
+      "group_id": "categories",
+      "group_title": "Categories",
+      "summary": "Coins Categories List (ID Map)",
+      "description": "Call GET /coins/categories/list.",
+      "tags": [
+        "Categories"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-list",
+      "method": "GET",
+      "path": "/coins/list",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coins List (ID Map)",
+      "description": "Call GET /coins/list.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-markets",
+      "method": "GET",
+      "path": "/coins/markets",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coins List with Market Data",
+      "description": "Coins List with Market Data.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-id",
+      "method": "GET",
+      "path": "/coins/{id}",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coin Data by ID",
+      "description": "Call GET /coins/{id}.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-id-history",
+      "method": "GET",
+      "path": "/coins/{id}/history",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coin Historical Data by ID",
+      "description": "Call GET /coins/{id}/history.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-id-market-chart",
+      "method": "GET",
+      "path": "/coins/{id}/market_chart",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coin Historical Chart Data by ID",
+      "description": "Call GET /coins/{id}/market_chart.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-id-market-chart-range",
+      "method": "GET",
+      "path": "/coins/{id}/market_chart/range",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coin Historical Chart Data within Time Range by ID",
+      "description": "Call GET /coins/{id}/market_chart/range.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-id-ohlc",
+      "method": "GET",
+      "path": "/coins/{id}/ohlc",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coin OHLC Chart by ID",
+      "description": "Call GET /coins/{id}/ohlc.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-id-tickers",
+      "method": "GET",
+      "path": "/coins/{id}/tickers",
+      "group_id": "coins",
+      "group_title": "Coins",
+      "summary": "Coin Tickers by ID",
+      "description": "Call GET /coins/{id}/tickers.",
+      "tags": [
+        "Coins"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "coins-contract-address",
+      "method": "GET",
+      "path": "/coins/{id}/contract/{contract_address}",
+      "group_id": "contract",
+      "group_title": "Contract",
+      "summary": "Coin Data by Token Address",
+      "description": "Call GET /coins/{id}/contract/{contract_address}.",
+      "tags": [
+        "Contract"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "contract-address-market-chart",
+      "method": "GET",
+      "path": "/coins/{id}/contract/{contract_address}/market_chart",
+      "group_id": "contract",
+      "group_title": "Contract",
+      "summary": "Coin Historical Chart Data by Token Address",
+      "description": "Call GET /coins/{id}/contract/{contract_address}/market_chart.",
+      "tags": [
+        "Contract"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "contract-address-market-chart-range",
+      "method": "GET",
+      "path": "/coins/{id}/contract/{contract_address}/market_chart/range",
+      "group_id": "contract",
+      "group_title": "Contract",
+      "summary": "Coin Historical Chart Data within Time Range by Token Address",
+      "description": "Call GET /coins/{id}/contract/{contract_address}/market_chart/range.",
+      "tags": [
+        "Contract"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "derivatives-tickers",
+      "method": "GET",
+      "path": "/derivatives",
+      "group_id": "derivatives",
+      "group_title": "Derivatives",
+      "summary": "Derivatives Tickers List",
+      "description": "Call GET /derivatives.",
+      "tags": [
+        "Derivatives"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "derivatives-exchanges",
+      "method": "GET",
+      "path": "/derivatives/exchanges",
+      "group_id": "derivatives",
+      "group_title": "Derivatives",
+      "summary": "Derivatives Exchanges List with Data",
+      "description": "Derivatives Exchanges List with Data.",
+      "tags": [
+        "Derivatives"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "derivatives-exchanges-list",
+      "method": "GET",
+      "path": "/derivatives/exchanges/list",
+      "group_id": "derivatives",
+      "group_title": "Derivatives",
+      "summary": "Derivatives Exchanges List (ID Map)",
+      "description": "Call GET /derivatives/exchanges/list.",
+      "tags": [
+        "Derivatives"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "derivatives-exchanges-id",
+      "method": "GET",
+      "path": "/derivatives/exchanges/{id}",
+      "group_id": "derivatives",
+      "group_title": "Derivatives",
+      "summary": "Derivatives Exchange Data by ID",
+      "description": "Call GET /derivatives/exchanges/{id}.",
+      "tags": [
+        "Derivatives"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "exchange-rates",
+      "method": "GET",
+      "path": "/exchange_rates",
+      "group_id": "exchange rates",
+      "group_title": "Exchange Rates",
+      "summary": "BTC-to-Currency Exchange Rates",
+      "description": "Call GET /exchange_rates.",
+      "tags": [
+        "Exchange Rates"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "exchanges",
+      "method": "GET",
+      "path": "/exchanges",
+      "group_id": "exchanges",
+      "group_title": "Exchanges",
+      "summary": "Exchanges List with Data",
+      "description": "Exchanges List with Data.",
+      "tags": [
+        "Exchanges"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "exchanges-list",
+      "method": "GET",
+      "path": "/exchanges/list",
+      "group_id": "exchanges",
+      "group_title": "Exchanges",
+      "summary": "Exchanges List (ID Map)",
+      "description": "Call GET /exchanges/list.",
+      "tags": [
+        "Exchanges"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "exchanges-id",
+      "method": "GET",
+      "path": "/exchanges/{id}",
+      "group_id": "exchanges",
+      "group_title": "Exchanges",
+      "summary": "Exchange Data by ID",
+      "description": "Call GET /exchanges/{id}.",
+      "tags": [
+        "Exchanges"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "exchanges-id-tickers",
+      "method": "GET",
+      "path": "/exchanges/{id}/tickers",
+      "group_id": "exchanges",
+      "group_title": "Exchanges",
+      "summary": "Exchange Tickers by ID",
+      "description": "Call GET /exchanges/{id}/tickers.",
+      "tags": [
+        "Exchanges"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "exchanges-id-volume-chart",
+      "method": "GET",
+      "path": "/exchanges/{id}/volume_chart",
+      "group_id": "exchanges",
+      "group_title": "Exchanges",
+      "summary": "Exchange Volume Chart by ID",
+      "description": "Call GET /exchanges/{id}/volume_chart.",
+      "tags": [
+        "Exchanges"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "crypto-global",
+      "method": "GET",
+      "path": "/global",
+      "group_id": "global",
+      "group_title": "Global",
+      "summary": "Crypto Global Market Data",
+      "description": "Crypto Global Market Data.",
+      "tags": [
+        "Global"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "global-DeFi",
+      "method": "GET",
+      "path": "/global/decentralized_finance_defi",
+      "group_id": "global",
+      "group_title": "Global",
+      "summary": "Global DeFi Market Data",
+      "description": "Call GET /global/decentralized_finance_defi.",
+      "tags": [
+        "Global"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "nfts-list",
+      "method": "GET",
+      "path": "/nfts/list",
+      "group_id": "nfts (beta)",
+      "group_title": "Nfts (Beta)",
+      "summary": "NFTs List (ID Map)",
+      "description": "Call GET /nfts/list.",
+      "tags": [
+        "NFTs (Beta)"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "nfts-contract-address",
+      "method": "GET",
+      "path": "/nfts/{asset_platform_id}/contract/{contract_address}",
+      "group_id": "nfts (beta)",
+      "group_title": "Nfts (Beta)",
+      "summary": "NFTs Collection Data by Contract Address",
+      "description": "Call GET /nfts/{asset_platform_id}/contract/{contract_address}.",
+      "tags": [
+        "NFTs (Beta)"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "nfts-id",
+      "method": "GET",
+      "path": "/nfts/{id}",
+      "group_id": "nfts (beta)",
+      "group_title": "Nfts (Beta)",
+      "summary": "NFTs Collection Data by ID",
+      "description": "Call GET /nfts/{id}.",
+      "tags": [
+        "NFTs (Beta)"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "ping-server",
+      "method": "GET",
+      "path": "/ping",
+      "group_id": "ping",
+      "group_title": "Ping",
+      "summary": "Check API server status",
+      "description": "Call GET /ping.",
+      "tags": [
+        "Ping"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "entities-list",
+      "method": "GET",
+      "path": "/entities/list",
+      "group_id": "public treasury",
+      "group_title": "Public Treasury",
+      "summary": "Entities List (ID Map)",
+      "description": "Call GET /entities/list.",
+      "tags": [
+        "Public Treasury"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "public-treasury-entity",
+      "method": "GET",
+      "path": "/public_treasury/{entity_id}",
+      "group_id": "public treasury",
+      "group_title": "Public Treasury",
+      "summary": "Crypto Treasury Holdings by Entity ID",
+      "description": "Crypto Treasury Holdings by Entity ID.",
+      "tags": [
+        "Public Treasury"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "public-treasury-transaction-history",
+      "method": "GET",
+      "path": "/public_treasury/{entity_id}/transaction_history",
+      "group_id": "public treasury",
+      "group_title": "Public Treasury",
+      "summary": "Crypto Treasury Transaction History by Entity ID",
+      "description": "Crypto Treasury Transaction History by Entity ID.",
+      "tags": [
+        "Public Treasury"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "public-treasury-entity-chart",
+      "method": "GET",
+      "path": "/public_treasury/{entity_id}/{coin_id}/holding_chart",
+      "group_id": "public treasury",
+      "group_title": "Public Treasury",
+      "summary": "Crypto Treasury Holdings Historical Chart Data by ID",
+      "description": "Crypto Treasury Holdings Historical Chart Data by ID.",
+      "tags": [
+        "Public Treasury"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "companies-public-treasury",
+      "method": "GET",
+      "path": "/{entity}/public_treasury/{coin_id}",
+      "group_id": "public treasury",
+      "group_title": "Public Treasury",
+      "summary": "Crypto Treasury Holdings by Coin ID",
+      "description": "Crypto Treasury Holdings by Coin ID.",
+      "tags": [
+        "Public Treasury"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "search-data",
+      "method": "GET",
+      "path": "/search",
+      "group_id": "search",
+      "group_title": "Search",
+      "summary": "Search Queries",
+      "description": "Call GET /search.",
+      "tags": [
+        "Search"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "simple-price",
+      "method": "GET",
+      "path": "/simple/price",
+      "group_id": "simple",
+      "group_title": "Simple",
+      "summary": "Coin Price by IDs, Symbols, or Names",
+      "description": "Call GET /simple/price.",
+      "tags": [
+        "Simple"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "simple-supported-currencies",
+      "method": "GET",
+      "path": "/simple/supported_vs_currencies",
+      "group_id": "simple",
+      "group_title": "Simple",
+      "summary": "Supported Currencies List",
+      "description": "Call GET /simple/supported_vs_currencies.",
+      "tags": [
+        "Simple"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "simple-token-price",
+      "method": "GET",
+      "path": "/simple/token_price/{id}",
+      "group_id": "simple",
+      "group_title": "Simple",
+      "summary": "Coin Price by Token Addresses",
+      "description": "Call GET /simple/token_price/{id}.",
+      "tags": [
+        "Simple"
+      ],
+      "auth_required": true
+    },
+    {
+      "operation_id": "trending-search",
+      "method": "GET",
+      "path": "/search/trending",
+      "group_id": "trending",
+      "group_title": "Trending",
+      "summary": "Trending Search List",
+      "description": "Call GET /search/trending.",
+      "tags": [
+        "Trending"
+      ],
+      "auth_required": true
+    }
+  ],
+  "selected_scope_group_ids": [
+    "coins"
+  ],
+  "selected_scope_operation_ids": [
+    "coins-list",
+    "coins-markets",
+    "coins-id",
+    "coins-id-tickers",
+    "coins-id-history",
+    "coins-id-market-chart",
+    "coins-id-market-chart-range",
+    "coins-id-ohlc"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "draft_report_json_path": "reports\\testcase_drafts\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\round_01.md",
+  "execution_report_json_path": "reports\\execution_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\validation_batch.md",
+  "staged_final_report_json_path": "reports\\_staging\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.json",
+  "staged_final_report_md_path": "reports\\_staging\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.md",
+  "final_report_json_path": "reports\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.json",
+  "final_report_md_path": "reports\\final_runs\\coingecko_demo\\wf-2123633351714063aa4c9f794ec2c21b\\final_summary.md",
+  "rerun_user_text": null,
+  "finalized": true,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "start_new_workflow",
+    "status",
+    "help"
+  ]
+}

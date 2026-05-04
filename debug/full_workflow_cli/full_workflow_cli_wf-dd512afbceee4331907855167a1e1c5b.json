@@ -1,0 +1,189 @@
+{
+  "workflow_id": "a86fbc0526244c8598b59fb83aa504ed",
+  "thread_id": "wf-dd512afbceee4331907855167a1e1c5b",
+  "phase": "pending_review",
+  "assistant_message": "Review round: 1\nOriginal request: test target img đi\nCanonical command: test target img_local /img POST positive missing invalid\nUnderstanding: Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng muốn test target \"img_local\" tương ứng với group \"img\" và operation \"image_generate_img_post\", đồng thời giới hạn chỉ 2 test case.\nActive operations: POST /img\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] Gửi request hợp lệ với content là URL hợp lệ, prompt và quality tùy chọn\n      why: Test happy path với đầy đủ các trường hợp lệ, content là URI hợp lệ, prompt và quality được cung cấp\n      expect: [200]\n   2. [missing_required] Gửi request thiếu trường 'content' bắt buộc\n      why: 'content' là trường required duy nhất, bỏ qua nó sẽ dẫn đến validation error\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request với 'quality' là string thay vì integer\n      why: 'quality' phải là integer hoặc null, truyền string sẽ gây lỗi kiểu dữ liệu\n      expect: [422]\n   4. [unauthorized_or_forbidden] Operation không yêu cầu xác thực, skip test này\n      why: auth_required=false nên không có cơ chế auth để test unauthorized\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), không có cơ chế để sinh unauthorized case\n   5. [resource_not_found] Không có path parameter đại diện resource, skip test này\n      why: Endpoint /img không có path parameter nào, không thể test resource not found\n      skip: true\n      skip_reason: Endpoint /img không có path parameter nào đại diện cho resource identifier, không thể sinh resource_not_found case\n",
+  "status_message": "Workflow `a86fbc0526244c8598b59fb83aa504ed` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng muốn test target \"img_local\" tương ứng với group \"img\" và operation \"image_generate_img_post\", đồng thời giới hạn chỉ 2 test case.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Bạn muốn test toàn bộ 6 operations của target img_local, hay chỉ muốn test một số endpoint/operation cụ thể? (Ví dụ: chỉ \"POST /img\", hay tất cả các nhóm Fb, Img, Post, X, Yt?)",
+  "scope_confirmation_summary": "Người dùng muốn test target \"img_local\" tương ứng với group \"img\" và operation \"image_generate_img_post\", đồng thời giới hạn chỉ 2 test case.",
+  "scope_selection_mode": "groups",
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [
+    "img"
+  ],
+  "selected_scope_operation_ids": [
+    "image_generate_img_post"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "applied_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "latest_scope_selection_source": null,
+  "latest_scope_agent_action": null,
+  "latest_scope_agent_reason": null,
+  "last_scope_user_message": "test cái nào tôi chỉ muốn 2 testcase thôi",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-dd512afbceee4331907855167a1e1c5b\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-dd512afbceee4331907855167a1e1c5b\\round_01.md",
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "approve",
+    "revise",
+    "show_review_scope",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

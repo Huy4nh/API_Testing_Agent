@@ -1,0 +1,70 @@
+openapi: 3.0.3
+info:
+  title: Mempool Space Minimal API
+  version: "1.0"
+servers:
+  - url: https://mempool.space
+paths:
+  /api/v1/fees/recommended:
+    get:
+      summary: Get recommended Bitcoin fees
+      responses:
+        "200":
+          description: Recommended fees
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/mempool:
+    get:
+      summary: Get mempool statistics
+      responses:
+        "200":
+          description: Mempool stats
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/blocks/tip/height:
+    get:
+      summary: Get latest block height
+      responses:
+        "200":
+          description: Latest block height
+          content:
+            text/plain:
+              schema:
+                type: integer
+  /api/address/{address}:
+    get:
+      summary: Get Bitcoin address info
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+          example: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+      responses:
+        "200":
+          description: Address info
+          content:
+            application/json:
+              schema:
+                type: object
+  /api/tx/{txid}:
+    get:
+      summary: Get transaction by txid
+      parameters:
+        - name: txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction info
+          content:
+            application/json:
+              schema:
+                type: object

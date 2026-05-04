@@ -1,0 +1,37 @@
+{
+  "workflow_id": "2d0e2749cdd0488f943078c95edb555e",
+  "thread_id": "wf-04cdbdb7c5b6447b8ea1f9e515c64c01",
+  "phase": "error",
+  "assistant_message": "Workflow processing failed: Target 'blockchain' does not exist.",
+  "status_message": "Workflow `2d0e2749cdd0488f943078c95edb555e` is currently in phase `error`.",
+  "selected_target": null,
+  "candidate_targets": [
+    "binance_spot_testnet",
+    "binance_spot_public",
+    "mempool_btc_public",
+    "blockcypher_btc_public"
+  ],
+  "selection_question": "Which target blockchain do you want to test? Binance Spot Testnet, Binance Spot Public, Mempool BTC, or BlockCypher BTC?",
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "preferred_language": "en",
+  "language_policy": "adaptive",
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

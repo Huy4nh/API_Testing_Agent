@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: BlockCypher BTC Minimal API
+  version: "1.0"
+servers:
+  - url: https://api.blockcypher.com/v1/btc/main
+paths:
+  /:
+    get:
+      summary: Get Bitcoin chain overview
+      responses:
+        "200":
+          description: Chain overview
+          content:
+            application/json:
+              schema:
+                type: object
+  /blocks/{hash_or_height}:
+    get:
+      summary: Get block by hash or height
+      parameters:
+        - name: hash_or_height
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "500000"
+      responses:
+        "200":
+          description: Block info
+          content:
+            application/json:
+              schema:
+                type: object
+  /addrs/{address}:
+    get:
+      summary: Get address info
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Address info
+          content:
+            application/json:
+              schema:
+                type: object
+  /txs/{txid}:
+    get:
+      summary: Get transaction info
+      parameters:
+        - name: txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction info
+          content:
+            application/json:
+              schema:
+                type: object

@@ -1,0 +1,39 @@
+{
+  "workflow_id": "a4138683392d4bf49d4e435aef01c6c5",
+  "thread_id": "wf-414d55f22e8a4e68b1e09a4c1fd39641",
+  "phase": "error",
+  "assistant_message": "Không tìm thấy chức năng 'blockchain' trong target 'coingecko_onchain_demo'.\n\nCác chức năng hiện có của target `coingecko_onchain_demo` là:\n1. GET /simple/networks/{network}/token_price/{addresses} — Token Price by Token Addresses\n2. GET /search/pools — Search Pools & Tokens\n3. GET /networks — Supported Networks List (ID Map)\n4. GET /networks/{network}/dexes — Supported Dexes List by Network (ID Map)\n5. GET /networks/{network}/pools/{address} — Specific Pool Data by Pool Address\n6. GET /networks/{network}/pools/multi/{addresses} — Multiple Pools Data by Pool Addresses\n7. GET /networks/trending_pools — Trending Pools List\n8. GET /networks/{network}/trending_pools — Trending Pools by Network\n9. GET /networks/{network}/pools — Top Pools by Network\n10. GET /networks/{network}/dexes/{dex}/pools — Top Pools by Dex\n11. GET /networks/new_pools — New Pools List\n12. GET /networks/{network}/new_pools — New Pools by Network\n13. GET /networks/{network}/tokens/{token_address}/pools — Top Pools by Token Address\n14. GET /networks/{network}/tokens/{address} — Token Data by Token Address\n15. GET /networks/{network}/tokens/multi/{addresses} — Tokens Data by Token Addresses\n16. GET /networks/{network}/tokens/{address}/info — Token Info by Token Address\n17. GET /networks/{network}/pools/{pool_address}/info — Pool Tokens Info by Pool Address\n18. GET /networks/{network}/pools/{pool_address}/ohlcv/{timeframe} — Pool OHLCV chart by Pool Address\n19. GET /networks/{network}/pools/{pool_address}/trades — Past 24 Hour Trades by Pool Address\n20. GET /tokens/info_recently_updated — Most Recently Updated Tokens List",
+  "status_message": "Workflow `a4138683392d4bf49d4e435aef01c6c5` đang ở phase `error`. Target: `coingecko_onchain_demo`.",
+  "selected_target": "coingecko_onchain_demo",
+  "candidate_targets": [
+    "binance_spot_testnet",
+    "binance_spot_public",
+    "mempool_btc_public",
+    "blockcypher_btc_public",
+    "coingecko_onchain_demo",
+    "coingecko_demo"
+  ],
+  "selection_question": null,
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "workflow_id": "adb5d0c1e2e640c98c79ddee79f5f691",
+  "thread_id": "wf-f9b3aecc4c1a440d8a6986a283dcc913",
+  "phase": "error",
+  "assistant_message": "Không tìm thấy chức năng 'acs' trong target 'img_local'.\n\nCác chức năng hiện có của target `img_local` là:\n1. POST /img — Image Generate\n2. POST /FB — Fb Get Content\n3. POST /YT — Yt Get Content\n4. POST /X — X Get Content\n5. POST /X/content — X Content\n6. POST /post/x — X Post",
+  "status_message": "Workflow `adb5d0c1e2e640c98c79ddee79f5f691` đang ở phase `error`. Target: `img_local`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_api_prod",
+    "img_api_staging",
+    "img_local"
+  ],
+  "selection_question": null,
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

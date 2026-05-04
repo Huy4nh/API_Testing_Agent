@@ -1,0 +1,38 @@
+{
+  "workflow_id": "216fb89c1de64091bbd9cdfb7c43114c",
+  "thread_id": "wf-58c199ed3f8b4085b7a491d80a6d12f7",
+  "phase": "pending_review",
+  "assistant_message": "Review round: 1\nOriginal request: sinh ảnh của img\nCanonical command: test target img_local /img POST positive missing invalid\nUnderstanding: Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.\nActive operations: POST /img\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] Gửi request hợp lệ với content là URL hợp lệ, prompt và quality tùy chọn\n      why: Cung cấp đầy đủ field bắt buộc 'content' với giá trị URL hợp lệ, thêm prompt và quality để kiểm tra luồng thành công\n      expect: [200]\n   2. [missing_required] Gửi request thiếu field bắt buộc 'content'\n      why: 'content' là field required theo schema, nếu thiếu server phải trả lỗi validation\n      expect: [422]\n   3. [invalid_type_or_format] Gửi request với 'quality' là string thay vì integer\n      why: Schema yêu cầu 'quality' phải là integer hoặc null, truyền string sẽ gây lỗi validation\n      expect: [422]\n   4. [unauthorized_or_forbidden] Operation không yêu cầu auth\n      why: Theo spec, auth_required=false, nên test type unauthorized không có ý nghĩa\n      skip: true\n      skip_reason: Operation không yêu cầu authentication nên không có case unauthorized/forbidden\n   5. [resource_not_found] Không có path parameter resource identifier trong operation này\n      why: Operation POST /img không có path param nào đại diện cho resource ID nên không áp dụng được not found case\n      skip: true\n      skip_reason: Không có path parameter đại diện resource identifier, không thể tạo case resource not found\n",
+  "status_message": "Workflow `216fb89c1de64091bbd9cdfb7c43114c` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-58c199ed3f8b4085b7a491d80a6d12f7\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-58c199ed3f8b4085b7a491d80a6d12f7\\round_01.md",
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "approve",
+    "revise",
+    "show_review_scope",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

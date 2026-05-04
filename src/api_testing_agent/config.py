@@ -31,3 +31,5 @@ class Settings(BaseSettings):
         default="./data/langgraph_checkpoints.db",
         alias="LANGGRAPH_SQLITE_PATH",
     )
+    default_language_policy: str = "adaptive"
+    default_language: str = "vi"

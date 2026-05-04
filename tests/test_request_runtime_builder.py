@@ -55,12 +55,16 @@ def test_build_positive_runtime_request():
         },
         case_index=1,
     )
-
+    
     assert runtime.final_url == "http://127.0.0.1:8000/posts/1"
     assert runtime.final_headers["Authorization"] == "Bearer abc123"
-    assert runtime.final_json_body["title"] == "string"
+    assert runtime.final_json_body == {
+        "title": "My First Post",
+        "content": "This is the content of my first post.",
+        "published": True,
+    }
     assert runtime.expected_statuses == [201]
-
+    
 
 def test_build_missing_required_runtime_request():
     builder = RequestRuntimeBuilder()

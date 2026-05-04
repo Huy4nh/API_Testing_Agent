@@ -288,14 +288,24 @@ class InteractiveReportService:
             final_md.write_text(current_markdown, encoding="utf-8")
 
         logger.info("Report interaction finalized successfully.")
+        
+        preferred_language = str(state.get("preferred_language", "vi")).strip().lower()
+
+        assistant_response = (
+            "I finalized the report. "
+            f"The official files are located at `{final_json}` and `{final_md}`."
+            if preferred_language == "en"
+            else (
+                "Tôi đã chốt final report. "
+                f"File chính thức nằm tại `{final_json}` và `{final_md}`."
+            )
+        )
+
         return {
             "finalized": True,
             "final_report_json_path": str(final_json),
             "final_report_md_path": str(final_md),
-            "assistant_response": (
-                "Tôi đã chốt final report. "
-                f"File chính thức nằm tại `{final_json}` và `{final_md}`."
-            ),
+            "assistant_response": assistant_response,
             "artifact_paths": self._merge_artifact_paths(
                 list(state.get("artifact_paths", [])),
                 [str(final_json), str(final_md)],
@@ -334,13 +344,23 @@ class InteractiveReportService:
             shutil.rmtree(session_dir, ignore_errors=True)
 
         logger.info("Report interaction session cancelled and staging artifacts cleaned up.")
+        
+        preferred_language = str(state.get("preferred_language", "vi")).strip().lower()
+
+        assistant_response = (
+            "I cancelled this report session and cleaned all tracked staging artifacts. "
+            "No data was finalized or persisted."
+            if preferred_language == "en"
+            else (
+                "Tôi đã hủy phiên report này và xóa toàn bộ artifact staging được theo dõi. "
+                "Không có dữ liệu nào được finalize/persist."
+            )
+        )
+
         return {
             "cancelled": True,
             "artifact_paths": [],
-            "assistant_response": (
-                "Tôi đã hủy phiên report này và xóa toàn bộ artifact staging được theo dõi. "
-                "Không có dữ liệu nào được finalize/persist."
-            ),
+            "assistant_response": assistant_response,
         }
 
     def _session_dir(self, state: Mapping[str, Any]) -> Path:

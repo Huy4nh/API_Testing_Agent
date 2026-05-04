@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Any, Callable
 
+from api_testing_agent.core.report_hybrid_ai import ReportIntentHybridAIProtocol
 from api_testing_agent.core.report_interaction_models import (
     ReportIntentDecision,
     ReportInteractionState,
     ReportUserIntent,
 )
 from api_testing_agent.logging_config import bind_logger, get_logger
-
-from api_testing_agent.core.report_hybrid_ai import ReportIntentHybridAIProtocol
 
 FallbackIntentResolver = Callable[
     [str, dict[str, Any]],
@@ -19,6 +19,15 @@ FallbackIntentResolver = Callable[
 
 
 class ReportIntentAgent:
+    """
+    AI-first report intent detector.
+
+    Design:
+    - Keep only a very thin hard-stop layer for *extremely explicit* destructive commands.
+    - Let hybrid AI classify most realistic user messages first.
+    - Use heuristics only as a fallback when AI is unavailable / fails / is too uncertain.
+    """
+
     def __init__(
         self,
         fallback_resolver: FallbackIntentResolver | None = None,
@@ -27,13 +36,14 @@ class ReportIntentAgent:
         self._fallback_resolver = fallback_resolver
         self._hybrid_ai = hybrid_ai
         self._logger = get_logger(__name__)
+
     def detect(
         self,
         message: str,
         state: ReportInteractionState | dict[str, Any] | None = None,
     ) -> ReportIntentDecision:
         cleaned = message.strip()
-        lowered = self._normalize(cleaned)
+        normalized = self._normalize(cleaned)
 
         thread_id = self._safe_get(state, "thread_id")
         target_name = self._safe_get(state, "target_name")
@@ -55,75 +65,41 @@ class ReportIntentAgent:
             logger.info(f"Detected intent={decision.intent.value}")
             return decision
 
-        cancel_decision = self._detect_cancel(cleaned, lowered)
+        # 1) Very thin hard-stop layer only for extremely explicit destructive commands.
+        cancel_decision = self._detect_explicit_cancel(cleaned, normalized)
         if cancel_decision is not None:
             logger.info(f"Detected intent={cancel_decision.intent.value}")
             return cancel_decision
 
-        finalize_decision = self._detect_finalize(cleaned, lowered)
+        finalize_decision = self._detect_explicit_finalize(cleaned, normalized)
         if finalize_decision is not None:
             logger.info(f"Detected intent={finalize_decision.intent.value}")
             return finalize_decision
 
-        share_decision = self._detect_share(cleaned, lowered)
-        if share_decision is not None:
-            logger.info(f"Detected intent={share_decision.intent.value}")
-            return share_decision
+        # 2) AI-first for realistic conversational requests.
+        ai_decision = self._detect_with_ai(
+            cleaned=cleaned,
+            state=state,
+            thread_id=str(thread_id or ""),
+            target_name=str(target_name or ""),
+            logger=logger,
+        )
+        if ai_decision is not None:
+            logger.info(
+                f"AI-first detected intent={ai_decision.intent.value} "
+                f"confidence={ai_decision.confidence:.2f}"
+            )
+            return ai_decision
 
-        rerun_decision = self._detect_rerun(cleaned, lowered)
-        if rerun_decision is not None:
-            logger.info(f"Detected intent={rerun_decision.intent.value}")
-            return rerun_decision
+        # 3) Heuristic fallback only if AI is absent / failed / too uncertain.
+        heuristic_decision = self._detect_with_heuristics(cleaned, normalized)
+        if heuristic_decision is not None:
+            logger.info(
+                f"Heuristic fallback detected intent={heuristic_decision.intent.value}"
+            )
+            return heuristic_decision
 
-        revise_text_decision = self._detect_revise_report_text(cleaned, lowered)
-        if revise_text_decision is not None:
-            logger.info(f"Detected intent={revise_text_decision.intent.value}")
-            return revise_text_decision
-
-        ask_decision = self._detect_question(cleaned, lowered)
-        if ask_decision is not None:
-            logger.info(f"Detected intent={ask_decision.intent.value}")
-            return ask_decision
-
-        if self._hybrid_ai is not None:
-            try:
-                ai_result = self._hybrid_ai.decide_report_intent(
-                    thread_id=str(thread_id or ""),
-                    target_name=str(target_name or ""),
-                    user_text=cleaned,
-                    final_report_data=dict(self._safe_get(state, "final_report_data") or {}),
-                    current_markdown=str(self._safe_get(state, "final_report_markdown") or ""),
-                    messages=list(self._safe_get(state, "messages") or []),
-                )
-
-                raw_intent = str(
-                    ai_result.get(
-                        "intent",
-                        ReportUserIntent.ASK_REPORT_QUESTION.value,
-                    )
-                )
-                confidence = float(ai_result.get("confidence", 0.5))
-                reason = str(
-                    ai_result.get(
-                        "reason",
-                        "AI fallback intent classification.",
-                    )
-                )
-
-                mapped_intent = ReportUserIntent(raw_intent)
-
-                decision = ReportIntentDecision(
-                    intent=mapped_intent,
-                    confidence=confidence,
-                    reason=reason,
-                    revision_instruction=ai_result.get("revision_instruction"),
-                    rerun_instruction=ai_result.get("rerun_instruction"),
-                )
-                logger.info(f"AI fallback detected intent={decision.intent.value}")
-                return decision
-            except Exception as exc:
-                logger.warning(f"Hybrid AI report intent fallback failed: {exc}")
-
+        # 4) External fallback if configured.
         if self._fallback_resolver is not None:
             try:
                 resolved = self._fallback_resolver(cleaned, dict(state or {}))
@@ -143,147 +119,348 @@ class ReportIntentAgent:
         logger.info(f"Detected intent={decision.intent.value}")
         return decision
 
-    def _detect_cancel(
+    def _detect_with_ai(
+        self,
+        *,
+        cleaned: str,
+        state: ReportInteractionState | dict[str, Any] | None,
+        thread_id: str,
+        target_name: str,
+        logger: Any,
+    ) -> ReportIntentDecision | None:
+        if self._hybrid_ai is None:
+            return None
+
+        try:
+            ai_result = self._hybrid_ai.decide_report_intent(
+                thread_id=thread_id,
+                target_name=target_name,
+                user_text=cleaned,
+                final_report_data=dict(self._safe_get(state, "final_report_data") or {}),
+                current_markdown=self._truncate_text(
+                    str(self._safe_get(state, "final_report_markdown") or ""),
+                    limit=6000,
+                ),
+                messages=self._trim_messages(
+                    list(self._safe_get(state, "messages") or []),
+                    keep_last=12,
+                ),
+            )
+
+            raw_intent = str(
+                ai_result.get(
+                    "intent",
+                    ReportUserIntent.ASK_REPORT_QUESTION.value,
+                )
+            )
+            mapped_intent = self._safe_map_intent(raw_intent)
+            confidence = self._coerce_confidence(ai_result.get("confidence", 0.5))
+            reason = str(
+                ai_result.get(
+                    "reason",
+                    "AI-first report intent classification.",
+                )
+            ).strip() or "AI-first report intent classification."
+
+            decision = ReportIntentDecision(
+                intent=mapped_intent,
+                confidence=confidence,
+                reason=reason,
+                revision_instruction=self._coerce_optional_str(
+                    ai_result.get("revision_instruction")
+                ),
+                rerun_instruction=self._coerce_optional_str(
+                    ai_result.get("rerun_instruction")
+                ),
+            )
+
+            if not self._accept_ai_decision(decision):
+                logger.info(
+                    "AI result was too uncertain for direct use; falling back.",
+                    extra={
+                        "payload_source": "report_intent_ai_uncertain",
+                        "ai_intent": decision.intent.value,
+                        "ai_confidence": decision.confidence,
+                    },
+                )
+                return None
+
+            return decision
+
+        except Exception as exc:
+            logger.warning(f"Hybrid AI report intent classification failed: {exc}")
+            return None
+
+    def _accept_ai_decision(self, decision: ReportIntentDecision) -> bool:
+        """
+        Allow AI-first routing, but require stronger confidence for destructive actions.
+        Graph-level confirmation will still protect borderline destructive cases.
+        """
+        if decision.intent == ReportUserIntent.CANCEL_REPORT:
+            return decision.confidence >= 0.70
+
+        if decision.intent == ReportUserIntent.FINALIZE_REPORT:
+            return decision.confidence >= 0.68
+
+        if decision.intent in {
+            ReportUserIntent.REVISE_REPORT_TEXT,
+            ReportUserIntent.REVISE_AND_RERUN,
+            ReportUserIntent.SHARE_REPORT,
+            ReportUserIntent.ASK_REPORT_QUESTION,
+        }:
+            return decision.confidence >= 0.55
+
+        if decision.intent == ReportUserIntent.UNKNOWN:
+            return False
+
+        return decision.confidence >= 0.60
+
+    def _detect_with_heuristics(
         self,
         raw: str,
-        lowered: str,
+        normalized: str,
     ) -> ReportIntentDecision | None:
-        tokens = [
-            "hủy",
-            "huy",
-            "cancel",
-            "bỏ hết",
-            "bo het",
-            "không lưu",
-            "khong luu",
-            "discard",
-            "bỏ kết quả",
-            "bo ket qua",
-        ]
-        if self._contains_any(lowered, tokens):
-            return ReportIntentDecision(
-                intent=ReportUserIntent.CANCEL_REPORT,
-                confidence=0.98,
-                reason="Detected explicit cancel/discard instruction.",
-            )
+        # Order matters: rewrite/explain first, then rerun/share, then generic Q&A.
+        revise_text_decision = self._detect_revise_report_text(raw, normalized)
+        if revise_text_decision is not None:
+            return revise_text_decision
+
+        rerun_decision = self._detect_rerun(raw, normalized)
+        if rerun_decision is not None:
+            return rerun_decision
+
+        share_decision = self._detect_share(raw, normalized)
+        if share_decision is not None:
+            return share_decision
+
+        ask_decision = self._detect_question(raw, normalized)
+        if ask_decision is not None:
+            return ask_decision
+
         return None
 
-    def _detect_finalize(
+    def _detect_explicit_cancel(
         self,
         raw: str,
-        lowered: str,
+        normalized: str,
+    ) -> ReportIntentDecision | None:
+        exact_commands = {
+            "cancel",
+            "cancel report",
+            "cancel workflow",
+            "huy",
+            "huy di",
+            "huy het",
+            "huy report",
+            "huy workflow",
+            "bo report",
+            "bo ket qua",
+            "discard",
+            "discard report",
+            "stop report",
+        }
+
+        if normalized in exact_commands:
+            return ReportIntentDecision(
+                intent=ReportUserIntent.CANCEL_REPORT,
+                confidence=0.99,
+                reason="Detected explicit cancel/discard command.",
+            )
+
+        cancel_tokens = [
+            "huy",
+            "cancel",
+            "discard",
+            "stop",
+            "bo",
+        ]
+        cancel_object_tokens = [
+            "report",
+            "workflow",
+            "ket qua",
+            "het",
+            "tat ca",
+            "di",
+            "luon",
+        ]
+        non_cancel_tokens = [
+            "viet lai",
+            "giai thich",
+            "phan tich",
+            "tom tat",
+            "summary",
+            "rewrite",
+            "explain",
+            "rerun",
+            "chay lai",
+            "share",
+            "chia se",
+            "luu",
+            "save",
+            "finalize",
+        ]
+
+        if self._contains_any(normalized, cancel_tokens) and self._contains_any(
+            normalized,
+            cancel_object_tokens,
+        ) and not self._contains_any(normalized, non_cancel_tokens):
+            return ReportIntentDecision(
+                intent=ReportUserIntent.CANCEL_REPORT,
+                confidence=0.95,
+                reason="Detected strong cancel language.",
+            )
+
+        return None
+
+    def _detect_explicit_finalize(
+        self,
+        raw: str,
+        normalized: str,
     ) -> ReportIntentDecision | None:
         exact_confirms = {
             "ok",
             "oke",
-            "ok rồi",
             "ok roi",
-            "ổn",
+            "ok luu",
+            "ok luu di",
             "on",
-            "ổn rồi",
             "on roi",
             "done",
             "save",
-            "lưu",
+            "save report",
             "luu",
-            "lưu đi",
             "luu di",
-            "đồng ý",
             "dong y",
-            "chốt",
+            "dong y luu",
             "chot",
+            "chot di",
+            "finalize",
+            "finalize report",
             "approve",
+            "approve report",
             "approved",
         }
 
-        normalized_exact = lowered.strip()
-        if normalized_exact in exact_confirms:
+        if normalized in exact_confirms:
             return ReportIntentDecision(
                 intent=ReportUserIntent.FINALIZE_REPORT,
-                confidence=0.97,
-                reason="Detected explicit short finalize confirmation.",
+                confidence=0.98,
+                reason="Detected explicit finalize confirmation.",
             )
 
-        if (
-            self._contains_any(lowered, ["lưu", "luu", "save", "finalize", "chốt", "dong y"])
-            and not self._looks_like_question(lowered)
+        finalize_tokens = [
+            "luu",
+            "save",
+            "finalize",
+            "approve",
+            "approved",
+            "chot",
+        ]
+        confirm_tokens = [
+            "ok",
+            "oke",
+            "dong y",
+            "done",
+            "go ahead",
+            "please",
+            "di",
+            "luon",
+        ]
+        non_finalize_tokens = [
+            "viet lai",
+            "giai thich",
+            "phan tich",
+            "tom tat",
+            "summary",
+            "rewrite",
+            "explain",
+            "rerun",
+            "chay lai",
+            "share",
+            "chia se",
+            "huy",
+            "cancel",
+            "discard",
+        ]
+
+        if self._contains_any(normalized, finalize_tokens) and not self._contains_any(
+            normalized,
+            non_finalize_tokens,
         ):
-            return ReportIntentDecision(
-                intent=ReportUserIntent.FINALIZE_REPORT,
-                confidence=0.9,
-                reason="Detected save/finalize language without question pattern.",
-            )
+            if self._contains_any(normalized, confirm_tokens) or normalized in {
+                "luu",
+                "luu di",
+                "save",
+                "save report",
+                "chot",
+                "chot di",
+                "finalize",
+                "finalize report",
+            }:
+                return ReportIntentDecision(
+                    intent=ReportUserIntent.FINALIZE_REPORT,
+                    confidence=0.94,
+                    reason="Detected strong finalize/save command.",
+                )
 
         return None
 
     def _detect_share(
         self,
         raw: str,
-        lowered: str,
+        normalized: str,
     ) -> ReportIntentDecision | None:
         tokens = [
-            "chia sẻ",
             "chia se",
             "share",
-            "gửi team",
             "gui team",
-            "gửi sếp",
             "gui sep",
-            "tóm tắt để gửi",
-            "tom tat de gui",
-            "summary để gửi",
-            "summary de gui",
+            "de gui",
+            "export",
+            "send this report",
+            "share this report",
+            "send to team",
         ]
-        if self._contains_any(lowered, tokens):
+        if self._contains_any(normalized, tokens):
             return ReportIntentDecision(
                 intent=ReportUserIntent.SHARE_REPORT,
-                confidence=0.92,
-                reason="Detected share/export summary intent.",
+                confidence=0.86,
+                reason="Detected report sharing/export intent.",
             )
         return None
 
     def _detect_rerun(
         self,
         raw: str,
-        lowered: str,
+        normalized: str,
     ) -> ReportIntentDecision | None:
         strong_rerun_tokens = [
-            "chạy lại",
             "chay lai",
             "rerun",
             "re-run",
-            "test lại",
-            "test lai",
-            "run lại",
-            "run lai",
             "retest",
+            "test lai",
+            "run lai",
         ]
-        if self._contains_any(lowered, strong_rerun_tokens):
+        if self._contains_any(normalized, strong_rerun_tokens):
             return ReportIntentDecision(
                 intent=ReportUserIntent.REVISE_AND_RERUN,
-                confidence=0.97,
+                confidence=0.92,
                 reason="Detected explicit rerun instruction.",
                 rerun_instruction=raw,
             )
 
         scope_change_tokens = [
-            "bỏ ",
             "bo ",
-            "thêm ",
             "them ",
-            "chỉ ",
             "chi ",
             "only ",
             "exclude ",
             "include ",
-            "không cần",
             "khong can",
-            "đổi ",
             "doi ",
-            "sửa ",
             "sua ",
         ]
-
         test_related_tokens = [
             "test",
             "case",
@@ -306,13 +483,13 @@ class ReportIntentAgent:
             "auth",
         ]
 
-        if self._contains_any(lowered, scope_change_tokens) and self._contains_any(
-            lowered,
+        if self._contains_any(normalized, scope_change_tokens) and self._contains_any(
+            normalized,
             test_related_tokens,
         ):
             return ReportIntentDecision(
                 intent=ReportUserIntent.REVISE_AND_RERUN,
-                confidence=0.84,
+                confidence=0.78,
                 reason="Detected scope/test adjustment language likely requiring rerun.",
                 rerun_instruction=raw,
             )
@@ -322,44 +499,43 @@ class ReportIntentAgent:
     def _detect_revise_report_text(
         self,
         raw: str,
-        lowered: str,
+        normalized: str,
     ) -> ReportIntentDecision | None:
         tokens = [
-            "viết lại",
             "viet lai",
-            "chỉnh report",
             "chinh report",
-            "sửa report",
             "sua report",
-            "đổi format",
             "doi format",
-            "gọn hơn",
             "gon hon",
-            "ngắn hơn",
             "ngan hon",
-            "ngắn gọn",
             "ngan gon",
-            "chi tiết hơn",
             "chi tiet hon",
-            "chi tiết",
             "chi tiet",
-            "dài hơn",
             "dai hon",
             "bullet",
-            "gạch đầu dòng",
             "gach dau dong",
-            "dễ hiểu hơn",
             "de hieu hon",
-            "trình bày lại",
             "trinh bay lai",
-            "summary ngắn",
             "summary ngan",
+            "ngon ngu tu nhien",
+            "dien giai",
+            "giai thich ro rang",
+            "phan tich",
+            "nhan xet",
+            "rewrite report",
+            "rewrite the report",
+            "rephrase report",
+            "natural language",
+            "easy to understand",
+            "explain the report",
+            "make it clearer",
+            "make it easier to understand",
         ]
-        if self._contains_any(lowered, tokens):
+        if self._contains_any(normalized, tokens):
             return ReportIntentDecision(
                 intent=ReportUserIntent.REVISE_REPORT_TEXT,
-                confidence=0.9,
-                reason="Detected report rewriting/reformatting intent.",
+                confidence=0.84,
+                reason="Detected report rewriting/rephrasing/explanation intent.",
                 revision_instruction=raw,
             )
         return None
@@ -367,7 +543,7 @@ class ReportIntentAgent:
     def _detect_question(
         self,
         raw: str,
-        lowered: str,
+        normalized: str,
     ) -> ReportIntentDecision | None:
         if "?" in raw:
             return ReportIntentDecision(
@@ -377,41 +553,74 @@ class ReportIntentAgent:
             )
 
         question_tokens = [
-            "vì sao",
             "vi sao",
-            "tại sao",
             "tai sao",
-            "giải thích",
-            "giai thich",
-            "explain",
             "why",
             "how",
-            "sao",
-            "case nào",
             "case nao",
-            "fail ở đâu",
             "fail o dau",
-            "skip vì sao",
             "skip vi sao",
-            "tóm tắt",
-            "tom tat",
-            "summary",
-            "phân tích",
-            "phan tich",
+            "what happened",
+            "what failed",
+            "what is wrong",
         ]
-        if self._contains_any(lowered, question_tokens):
+        if self._contains_any(normalized, question_tokens):
             return ReportIntentDecision(
                 intent=ReportUserIntent.ASK_REPORT_QUESTION,
-                confidence=0.82,
+                confidence=0.8,
                 reason="Detected explanatory or analytical question language.",
             )
 
         return None
 
+    def _safe_map_intent(self, raw_intent: str) -> ReportUserIntent:
+        try:
+            return ReportUserIntent(raw_intent)
+        except Exception:
+            return ReportUserIntent.ASK_REPORT_QUESTION
+
+    def _coerce_confidence(self, value: Any) -> float:
+        try:
+            number = float(value)
+        except Exception:
+            return 0.5
+        return max(0.0, min(1.0, number))
+
+    def _coerce_optional_str(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    def _trim_messages(
+        self,
+        messages: list[dict[str, Any]],
+        *,
+        keep_last: int,
+    ) -> list[dict[str, Any]]:
+        if len(messages) <= keep_last:
+            return messages
+        return messages[-keep_last:]
+
+    def _truncate_text(
+        self,
+        text: str,
+        *,
+        limit: int,
+    ) -> str:
+        if len(text) <= limit:
+            return text
+        return text[:limit] + "\n...[truncated]"
+
     def _normalize(self, text: str) -> str:
-        text = text.strip().lower()
-        text = re.sub(r"\s+", " ", text)
-        return text
+        lowered = text.strip().lower()
+        normalized = unicodedata.normalize("NFD", lowered)
+        without_accents = "".join(
+            ch for ch in normalized if unicodedata.category(ch) != "Mn"
+        )
+        without_accents = without_accents.replace("đ", "d").replace("Đ", "D")
+        without_accents = re.sub(r"\s+", " ", without_accents)
+        return without_accents.strip()
 
     def _contains_any(
         self,
@@ -419,22 +628,6 @@ class ReportIntentAgent:
         tokens: list[str],
     ) -> bool:
         return any(token in text for token in tokens)
-
-    def _looks_like_question(self, lowered: str) -> bool:
-        return self._contains_any(
-            lowered,
-            [
-                "?",
-                "vì sao",
-                "vi sao",
-                "tại sao",
-                "tai sao",
-                "why",
-                "how",
-                "giải thích",
-                "giai thich",
-            ],
-        )
 
     def _safe_get(
         self,

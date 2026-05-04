@@ -1,0 +1,30 @@
+{
+  "workflow_id": "8e7cd99a301548b3baa52c26cef84148",
+  "thread_id": "wf-a36bbc85e10a4a008b879bdbf7857623",
+  "phase": "error",
+  "assistant_message": "Không xác định được target. Yêu cầu 'cancel' không rõ ràng và không match với bất kỳ target nào trong danh sách available_targets. Không có đủ thông tin để xác định target phù hợp.",
+  "status_message": "Workflow `8e7cd99a301548b3baa52c26cef84148` đang ở phase `error`.",
+  "selected_target": null,
+  "candidate_targets": [],
+  "selection_question": null,
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "workflow_id": "9167ef657b414a78b0ecc374bd72d4d4",
+  "thread_id": "wf-dc9bd237482d478a8138ee7ed6d6d314",
+  "phase": "error",
+  "assistant_message": "Không xác định được target. Yêu cầu 'kết thúc' không liên quan đến bất kỳ target API nào trong danh sách available_targets. Đây có vẻ là lệnh kết thúc phiên làm việc chứ không phải yêu cầu gọi API.",
+  "status_message": "Workflow `9167ef657b414a78b0ecc374bd72d4d4` đang ở phase `error`.",
+  "selected_target": null,
+  "candidate_targets": [],
+  "selection_question": null,
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

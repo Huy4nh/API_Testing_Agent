@@ -1,0 +1,35 @@
+{
+  "workflow_id": "566504cb604d486e905893747083218d",
+  "thread_id": "wf-45057b7c87a049feb4365dc9556da568",
+  "phase": "finalized",
+  "assistant_message": "Tôi đã chốt final report. File chính thức nằm tại `reports\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.json` và `reports\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.md`.",
+  "status_message": "Workflow `566504cb604d486e905893747083218d` đang ở phase `finalized`. Target: `img_api_staging`. Canonical command: `test target img_api_staging /img POST /YT POST positive missing invalid`. Staged final report: `reports\\_staging\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.md`. Final report: `reports\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.md`.",
+  "selected_target": "img_api_staging",
+  "candidate_targets": [
+    "img_api_prod",
+    "img_api_staging",
+    "img_local"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_api_staging /img POST /YT POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'img_api_staging' và đã match đúng chức năng cụ thể: POST /img.",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\round_02.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\round_02.md",
+  "execution_report_json_path": "reports\\execution_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\validation_batch.md",
+  "staged_final_report_json_path": "reports\\_staging\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.json",
+  "staged_final_report_md_path": "reports\\_staging\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.md",
+  "final_report_json_path": "reports\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.json",
+  "final_report_md_path": "reports\\final_runs\\img_api_staging\\wf-45057b7c87a049feb4365dc9556da568\\final_summary.md",
+  "rerun_user_text": null,
+  "finalized": true,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "start_new_workflow",
+    "status",
+    "help"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "workflow_id": "0fd45a368ab144f18bff31867a7f4c7e",
+  "thread_id": "wf-c687c4c7b3c44765b61a07bd1ee38b1e",
+  "phase": "report_interaction",
+  "assistant_message": "## Tóm tắt kết quả kiểm thử API CoinGecko\n\n### 🎯 Kiểm thử cái gì?\nChạy thử 4 endpoint của CoinGecko:\n- `/ping` – kiểm tra server còn sống không\n- `/simple/price` – lấy giá coin\n- `/simple/token_price/{id}` – lấy giá token theo contract address\n- `/simple/supported_vs_currencies` – lấy danh sách đơn vị tiền tệ hỗ trợ\n\n---\n\n### 📊 Kết quả tổng quan\n| | Số lượng |\n|---|---|\n| Tổng test case | 20 |\n| ✅ Pass | 1 |\n| ❌ Fail | 12 |\n| ⏭️ Skip | 7 |\n\n---\n\n### ✅ Cái duy nhất pass\n**`GET /ping` – gọi bình thường** → trả về `200 OK` đúng như kỳ vọng. API còn sống.\n\n---\n\n### ❌ Tại sao 12 case fail?\n\nCó **2 nhóm lỗi chính**:\n\n**1. API trả về `422` thay vì `200` hoặc `400`** (ảnh hưởng `/simple/price`)\n> Tức là server báo \"dữ liệu gửi lên không hợp lệ\" — có thể do cách gửi tham số chưa đúng format mà API demo yêu cầu.\n\n**2. API trả về `429 Too Many Requests`** (ảnh hưởng `/simple/token_price/{id}` và `/simple/supported_vs_currencies`)\n> Tức là **bị giới hạn tốc độ gọi API** — gọi quá nhiều trong thời gian ngắn nên bị chặn. Đây không phải lỗi logic, mà là vấn đề rate limit của CoinGecko free tier.\n\n**3. `/ping` không yêu cầu xác thực**\n> Test thử gọi không có token, kỳ vọng bị từ chối (`401/403`), nhưng server vẫn trả `200` — tức là endpoint này **không cần đăng nhập**, nên test này fail là hợp lý.\n\n---\n\n### ⏭️ 7 case bị skip — vì sao?\nNhững case này **không thể chạy được** vì bản thân endpoint không có tham số để test, ví dụ:\n- `/ping` không có tham số nào → không thể test \"thiếu tham số\" hay \"sai kiểu\"\n- `/simple/supported_vs_currencies` cũng tương tự\n\n---\n\n### 💡 Kết luận nhanh\n> API `/ping` hoạt động bình thường. Các endpoint còn lại **chủ yếu fail do bị rate limit (429)** hoặc **server trả mã lỗi khác với kỳ vọng (422 vs 400)**. Không có lỗi crash hay exception nào.",
+  "status_message": "Workflow `0fd45a368ab144f18bff31867a7f4c7e` đang ở phase `report_interaction`. Target: `coingecko_demo`. Canonical command: `test target coingecko_demo /ping GET /simple/price GET /simple/token_price/{id} GET /simple/supported_vs_currencies GET positive missing invalid`. Staged final report: `reports\\_staging\\final_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\final_summary.md`.",
+  "selected_target": "coingecko_demo",
+  "candidate_targets": [
+    "coingecko_demo",
+    "coingecko_onchain_demo"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target coingecko_demo /ping GET /simple/price GET /simple/token_price/{id} GET /simple/supported_vs_currencies GET positive missing invalid",
+  "understanding_explanation": "Yêu cầu đã ở dạng canonical command, giữ nguyên và parse trực tiếp.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "draft_report_json_path": "reports\\testcase_drafts\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\round_02.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\round_02.md",
+  "execution_report_json_path": "reports\\execution_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\validation_batch.md",
+  "staged_final_report_json_path": "reports\\_staging\\final_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\final_summary.json",
+  "staged_final_report_md_path": "reports\\_staging\\final_runs\\coingecko_demo\\wf-c687c4c7b3c44765b61a07bd1ee38b1e\\final_summary.md",
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "ask_report_question",
+    "revise_report_text",
+    "share_report",
+    "rerun",
+    "finalize",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

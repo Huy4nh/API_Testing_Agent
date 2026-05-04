@@ -1,0 +1,39 @@
+{
+  "workflow_id": "3c0c3861b4604fefb7b7c71c0ac1dd63",
+  "thread_id": "wf-00dbb2dc3cc04424b352b5d7366bf92d",
+  "phase": "pending_review",
+  "assistant_message": "Đây là phạm vi review hiện tại:\n- Phase: `pending_review`\n- Target: `img_local`\n- Canonical command: `test target img_local /img POST positive missing invalid`\n- Understanding: Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.\n\nCác chức năng hiện có của target `img_local`:\n1. POST /img (operation_id=image_generate_img_post)\n   - Description: Image Generate\n2. POST /FB (operation_id=fb_get_content_FB_post)\n   - Description: Fb Get Content\n3. POST /YT (operation_id=yt_get_content_YT_post)\n   - Description: Yt Get Content\n4. POST /X (operation_id=x_get_content_X_post)\n   - Description: X Get Content\n5. POST /X/content (operation_id=x_content_X_content_post)\n   - Description: X Content\n6. POST /post/x (operation_id=x_post_post_x_post)\n   - Description: X Post\n\nPreview draft hiện tại:\nReview round: 1\nOriginal request: test the img generate of img\nCanonical command: test target img_local /img POST positive missing invalid\nUnderstanding: Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.\nActive operations: POST /img\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] POST /img với content là URL hợp lệ, có prompt và quality\n      why: Gửi đầy đủ các trường hợp lệ để kiểm tra luồng thành công cơ bản\n      expect: [200]\n   2. [missing_required] POST /img thiếu trường 'content' bắt buộc\n      why: 'content' là trường required duy nhất, bỏ qua nó phải gây lỗi validation\n      expect: [422]\n   3. [invalid_type_or_format] POST /img với 'quality' là string thay vì integer\n      why: Field 'quality' yêu cầu integer hoặc null, truyền string sẽ gây lỗi validation type\n      expect: [422]\n   4. [unauthorized_or_forbidden] Skip vì operation không yêu cầu auth\n      why: auth_required=false, không có cơ chế xác thực nào được định nghĩa cho operation này\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), không phù hợp để test unauthorized\n   5. [resource_not_found] Skip vì không có path parameter đại diện resource identifier\n      why: Endpoint /img là endpoint tạo mới, không có path param resource ID nên không thể test not found\n      skip: true\n      skip_reason: Không có path parameter nào đại diện cho resource identifier nên không thể sinh case resource_not_found\n",
+  "status_message": "Workflow `3c0c3861b4604fefb7b7c71c0ac1dd63` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.",
+  "preferred_language": "vi",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-00dbb2dc3cc04424b352b5d7366bf92d\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-00dbb2dc3cc04424b352b5d7366bf92d\\round_01.md",
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "approve",
+    "revise",
+    "show_review_scope",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

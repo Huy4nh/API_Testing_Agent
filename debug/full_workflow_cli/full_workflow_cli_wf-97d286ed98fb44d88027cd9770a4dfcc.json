@@ -1,0 +1,39 @@
+{
+  "workflow_id": "e7ab401f60ed41788b96a5be89e3fbfb",
+  "thread_id": "wf-97d286ed98fb44d88027cd9770a4dfcc",
+  "phase": "error",
+  "assistant_message": "Xử lý workflow thất bại: Target 'blockchain' does not exist.",
+  "status_message": "Workflow `e7ab401f60ed41788b96a5be89e3fbfb` đang ở phase `error`.",
+  "selected_target": null,
+  "candidate_targets": [
+    "binance_spot_testnet",
+    "binance_spot_public",
+    "mempool_btc_public",
+    "blockcypher_btc_public",
+    "coingecko_demo",
+    "coingecko_onchain_demo"
+  ],
+  "selection_question": "Bạn muốn test target blockchain nào? Có nhiều target liên quan đến blockchain: binance_spot_testnet (Binance testnet), mempool_btc_public (Bitcoin mempool), blockcypher_btc_public (BlockCypher BTC), coingecko_demo, coingecko_onchain_demo. Bạn muốn chọn target nào?",
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

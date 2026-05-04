@@ -1,0 +1,34 @@
+{
+  "workflow_id": "86cc9b3a67c14b25b8b4ea51b03c55a9",
+  "thread_id": "wf-1b9f61f445034219974206d85cdc065d",
+  "phase": "error",
+  "assistant_message": "Không tìm thấy chức năng 'abcd' trong target 'img_local'.",
+  "status_message": "Workflow `86cc9b3a67c14b25b8b4ea51b03c55a9` đang ở phase `error`. Target: `img_local`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_api_prod",
+    "img_api_staging",
+    "img_local"
+  ],
+  "selection_question": null,
+  "canonical_command": null,
+  "understanding_explanation": null,
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "status",
+    "help"
+  ]
+}

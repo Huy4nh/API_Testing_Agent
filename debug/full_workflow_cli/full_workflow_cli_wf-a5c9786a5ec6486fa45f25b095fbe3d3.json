@@ -1,0 +1,200 @@
+{
+  "workflow_id": "9be055c597cc4c55b316554770909229",
+  "thread_id": "wf-a5c9786a5ec6486fa45f25b095fbe3d3",
+  "phase": "cancelled",
+  "assistant_message": "Tôi đã hủy phiên report này và xóa toàn bộ artifact staging được theo dõi. Không có dữ liệu nào được finalize/persist.",
+  "status_message": "Workflow `9be055c597cc4c55b316554770909229` đang ở phase `cancelled`. Target: `img_local`. Canonical command: `test target img_local /img POST /post/x POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST /post/x POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, post. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /post/x. Lý do: Đã áp dụng gợi ý các nhóm nên test trước.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "The request \"test target img\" currently covers all 6 operations across 5 groups (Fb, Img, Post, X, Yt). Do you want to test all of these operations, or would you prefer to focus on a specific group or operation? For example: only the **Img** group (POST /img), or including other groups such as Fb, Post, X, Yt?",
+  "scope_confirmation_summary": "Đã áp dụng gợi ý các nhóm nên test trước.",
+  "scope_selection_mode": "groups",
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [
+    "img",
+    "post"
+  ],
+  "selected_scope_operation_ids": [
+    "image_generate_img_post",
+    "x_post_post_x_post"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": "prioritize",
+    "group_ids": [
+      "img",
+      "post"
+    ],
+    "operation_ids": [
+      "image_generate_img_post",
+      "x_post_post_x_post"
+    ],
+    "rationale": "Dựa theo lịch sử xác nhận phạm vi, người dùng chỉ muốn test 2 operations. Target là `img_local` nên `img` là nhóm cốt lõi cần ưu tiên nhất. `post` được chọn tiếp theo vì đây là nhóm thao tác cơ bản và phổ biến. Các nhóm còn lại (fb, x, yt) là các nhóm phụ trợ/niche nên được bỏ qua trong lần test này.",
+    "follow_up_question": "Bạn có muốn bắt đầu chạy test với 2 nhóm `img` và `post` ngay bây giờ không?",
+    "source_user_message": "test theo gợi ý của bạn đi",
+    "rendered_message": "Gợi ý các nhóm nên test trước:\n- Img\n  Operations related to img\n- Post\n  Operations related to post\n\nLý do: Dựa theo lịch sử xác nhận phạm vi, người dùng chỉ muốn test 2 operations. Target là `img_local` nên `img` là nhóm cốt lõi cần ưu tiên nhất. `post` được chọn tiếp theo vì đây là nhóm thao tác cơ bản và phổ biến. Các nhóm còn lại (fb, x, yt) là các nhóm phụ trợ/niche nên được bỏ qua trong lần test này.\n\nBạn có muốn bắt đầu chạy test với 2 nhóm `img` và `post` ngay bây giờ không?"
+  },
+  "applied_scope_recommendation": {
+    "mode": "prioritize",
+    "group_ids": [
+      "img",
+      "post"
+    ],
+    "operation_ids": [
+      "image_generate_img_post",
+      "x_post_post_x_post"
+    ],
+    "rationale": "Dựa theo lịch sử xác nhận phạm vi, người dùng chỉ muốn test 2 operations. Target là `img_local` nên `img` là nhóm cốt lõi cần ưu tiên nhất. `post` được chọn tiếp theo vì đây là nhóm thao tác cơ bản và phổ biến. Các nhóm còn lại (fb, x, yt) là các nhóm phụ trợ/niche nên được bỏ qua trong lần test này.",
+    "follow_up_question": "Bạn có muốn bắt đầu chạy test với 2 nhóm `img` và `post` ngay bây giờ không?",
+    "source_user_message": "test theo gợi ý của bạn đi",
+    "rendered_message": "Gợi ý các nhóm nên test trước:\n- Img\n  Operations related to img\n- Post\n  Operations related to post\n\nLý do: Dựa theo lịch sử xác nhận phạm vi, người dùng chỉ muốn test 2 operations. Target là `img_local` nên `img` là nhóm cốt lõi cần ưu tiên nhất. `post` được chọn tiếp theo vì đây là nhóm thao tác cơ bản và phổ biến. Các nhóm còn lại (fb, x, yt) là các nhóm phụ trợ/niche nên được bỏ qua trong lần test này.\n\nBạn có muốn bắt đầu chạy test với 2 nhóm `img` và `post` ngay bây giờ không?"
+  },
+  "latest_scope_selection_source": "applied_scope_recommendation",
+  "latest_scope_agent_action": "apply_scope_recommendation",
+  "latest_scope_agent_reason": "Dựa theo lịch sử xác nhận phạm vi, người dùng chỉ muốn test 2 operations. Target là `img_local` nên `img` là nhóm cốt lõi cần ưu tiên nhất. `post` được chọn tiếp theo vì đây là nhóm thao tác cơ bản và phổ biến. Các nhóm còn lại (fb, x, yt) là các nhóm phụ trợ/niche nên được bỏ qua trong lần test này.",
+  "last_scope_user_message": "đúng",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-a5c9786a5ec6486fa45f25b095fbe3d3\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-a5c9786a5ec6486fa45f25b095fbe3d3\\round_01.md",
+  "execution_report_json_path": "reports\\execution_runs\\img_local\\wf-a5c9786a5ec6486fa45f25b095fbe3d3\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\img_local\\wf-a5c9786a5ec6486fa45f25b095fbe3d3\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\img_local\\wf-a5c9786a5ec6486fa45f25b095fbe3d3\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\img_local\\wf-a5c9786a5ec6486fa45f25b095fbe3d3\\validation_batch.md",
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": true,
+  "needs_user_input": true,
+  "available_actions": [
+    "start_new_workflow",
+    "status",
+    "help"
+  ]
+}

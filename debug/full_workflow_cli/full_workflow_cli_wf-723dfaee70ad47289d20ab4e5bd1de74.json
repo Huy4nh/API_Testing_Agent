@@ -1,0 +1,41 @@
+{
+  "workflow_id": "475208a174714819a4b144bdbdfcf783",
+  "thread_id": "wf-723dfaee70ad47289d20ab4e5bd1de74",
+  "phase": "report_interaction",
+  "assistant_message": "# Final Workflow Report\n\n- Run ID: `ac0ffb22256f4ddf896633b5417aa00c`\n- Thread ID: `wf-723dfaee70ad47289d20ab4e5bd1de74`\n- Target: `img_local`\n- Report stage: `staged`\n\n## Request Trace\n- Original request: test img generate of img\n- Selected target: `img_local`\n- Candidate targets: `['img_local', 'img_api_staging', 'img_api_prod']`\n- Canonical command: `test target img_local /img POST positive missing invalid`\n- Understanding explanation: Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.\n\n## Review Trace\n- No feedback history.\n\n## Execution Summary\n- Total cases: `5`\n- Executed cases: `3`\n- Skipped cases (execution): `2`\n\n## Validation Summary\n- Pass: `3`\n- Fail: `0`\n- Skip: `2`\n- Error: `0`\n\n## Notable Findings\n- [MEDIUM] Slow response: Response time = 79517.91 ms, vượt ngưỡng cảnh báo 5000 ms.\n- [INFO] Skipped cases: Có 2 case bị skip ở lớp validation/runtime.\n\n## Linked Reports\n- Draft report: `reports\\testcase_drafts\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\round_01.md`\n- Execution report: `reports\\execution_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\execution_batch.md`\n- Validation report: `reports\\validation_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\validation_batch.md`\n\n## Case Summaries\n### 1. POST /img\n- Logical case: POST /img với content hợp lệ (URL), có prompt và quality\n- Test type: `positive`\n- Expected statuses: `[200]`\n- Actual status: `200`\n- Response time: `79517.91 ms`\n- Verdict: `pass`\n- Summary: Validation passed.\n\n### 2. POST /img\n- Logical case: POST /img thiếu trường content bắt buộc\n- Test type: `missing_required`\n- Expected statuses: `[422]`\n- Actual status: `422`\n- Response time: `525.70 ms`\n- Verdict: `pass`\n- Summary: Validation passed.\n\n### 3. POST /img\n- Logical case: POST /img với quality là string thay vì integer\n- Test type: `invalid_type_or_format`\n- Expected statuses: `[422]`\n- Actual status: `422`\n- Response time: `474.34 ms`\n- Verdict: `pass`\n- Summary: Validation passed.\n\n### 4. POST /img\n- Logical case: POST /img - operation không yêu cầu auth\n- Test type: `unauthorized_or_forbidden`\n- Response time: `0.00 ms`\n- Verdict: `skip`\n- Skipped: `True`\n- Skip reason: Operation không yêu cầu authentication (auth_required=false), không có cơ chế kiểm soát truy cập\n- Summary: Operation không yêu cầu authentication (auth_required=false), không có cơ chế kiểm soát truy cập\n- Issues:\n  - [case_skipped] Case skipped: Operation không yêu cầu authentication (auth_required=false), không có cơ chế kiểm soát truy cập\n\n### 5. POST /img\n- Logical case: POST /img - không có path parameter resource identifier\n- Test type: `resource_not_found`\n- Response time: `0.00 ms`\n- Verdict: `skip`\n- Skipped: `True`\n- Skip reason: Không có path parameter nào đại diện cho resource identifier nên không thể sinh case not found\n- Summary: Không có path parameter nào đại diện cho resource identifier nên không thể sinh case not found\n- Issues:\n  - [case_skipped] Case skipped: Không có path parameter nào đại diện cho resource identifier nên không thể sinh case not found\n\n\nBạn có thể hỏi giải thích report, yêu cầu tôi viết lại report, yêu cầu sửa scope để chạy lại, hoặc nói `lưu` / `done` / `hủy`.",
+  "status_message": "Workflow `475208a174714819a4b144bdbdfcf783` is currently in phase `report_interaction`. Target: `img_local`. Canonical command: `test target img_local /img POST positive missing invalid`. Staged final report: `reports\\_staging\\final_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\final_summary.md`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST positive missing invalid",
+  "understanding_explanation": "Đã xác định target là 'img_local' và đã match đúng chức năng cụ thể: POST /img.",
+  "preferred_language": "en",
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\round_01.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\round_01.md",
+  "execution_report_json_path": "reports\\execution_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\validation_batch.md",
+  "staged_final_report_json_path": "reports\\_staging\\final_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\final_summary.json",
+  "staged_final_report_md_path": "reports\\_staging\\final_runs\\img_local\\wf-723dfaee70ad47289d20ab4e5bd1de74\\final_summary.md",
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "ask_report_question",
+    "revise_report_text",
+    "share_report",
+    "rerun",
+    "finalize",
+    "cancel",
+    "status",
+    "help"
+  ]
+}
