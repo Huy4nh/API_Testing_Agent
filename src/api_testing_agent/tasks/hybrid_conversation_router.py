@@ -251,18 +251,32 @@ class HybridConversationRouter:
                 RouterIntent.STATUS,
             }
 
-        if decision.intent == RouterIntent.CLARIFY:
-            return False
+        if snapshot.phase == WorkflowPhase.PENDING_REVIEW:
+            # Important:
+            # Do not let deterministic CLARIFY block AI here.
+            # Natural review edits like "bỏ x post thay bằng yt" may not match
+            # a simple lexical rule, but they are valid review feedback.
+            return decision.intent in {
+                RouterIntent.RESUME_REVIEW,
+                RouterIntent.SHOW_REVIEW_SCOPE,
+                RouterIntent.CLARIFY,
+                RouterIntent.HELP,
+                RouterIntent.STATUS,
+            }
 
-        if decision.intent == RouterIntent.SHOW_REVIEW_SCOPE:
-            return False
+        if snapshot.phase in {
+            WorkflowPhase.REPORT_INTERACTION,
+            WorkflowPhase.FINAL_REPORT_STAGED,
+            WorkflowPhase.RERUN_REQUESTED,
+        }:
+            return decision.intent in {
+                RouterIntent.CONTINUE_REPORT_INTERACTION,
+                RouterIntent.CLARIFY,
+                RouterIntent.HELP,
+                RouterIntent.STATUS,
+            }
 
-        return decision.intent in {
-            RouterIntent.RESUME_REVIEW,
-            RouterIntent.CONTINUE_REPORT_INTERACTION,
-            RouterIntent.HELP,
-            RouterIntent.STATUS,
-        }
+        return False
 
     def _apply_phase_policy(
         self,

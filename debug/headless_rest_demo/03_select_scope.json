@@ -1,0 +1,74 @@
+﻿{
+    "ok":  true,
+    "operation":  "continue_workflow",
+    "actor_context":  {
+                          "actor_id":  "demo_script",
+                          "session_id":  "demo_headless_rest_workflow",
+                          "user_id":  "local_user",
+                          "org_id":  "local_org"
+                      },
+    "workflow":  {
+                     "workflow_id":  "7737c3e4f7f74dedaa677429a0b16fee",
+                     "thread_id":  "wf-f1cd8e2035a6416ea7f03ba43b6c92ee",
+                     "phase":  "pending_review",
+                     "current_target":  "img_api_prod",
+                     "assistant_message":  "Review round: 1\nOriginal request: test img\nCanonical command: test target img_api_prod /img POST positive missing invalid\nUnderstanding: Initial understanding: ÄÃ£ xÃ¡c Äá»nh target lÃ  `img_api_prod` vÃ  ÄÃ£ chá»t scope cuá»i cÃ¹ng theo xÃ¡c nháº­n cá»§a ngÆ°á»i dÃ¹ng. NhÃ³m ÄÃ£ chá»n: img. NhÃ³m bá» loáº¡i trá»«: fb, post, x, yt. Operation cuá»i cÃ¹ng: HTTPMETHOD.POST /img. LÃ½ do: NgÆ°á»i dÃ¹ng chá» muá»n test nhÃ³m Img, khÃ´ng test cÃ¡c nhÃ³m khÃ¡c. NhÃ³m Img chá»©a operation image_generate_img_post. Initial scope operations: POST /img. Current approved review scope for target `img_api_prod`: Final active operations: POST /img. Final approved scope operations: POST /img.\nActive operations: POST /img\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] POST /img vá»i content há»£p lá» (URL), prompt vÃ  quality tÃ¹y chá»n\n      why: Gá»­i request Äáº§y Äá»§ vá»i content lÃ  URL há»£p lá», prompt vÃ  quality ÄÆ°á»£c cung cáº¥p Äá» kiá»m tra happy path.\n      expect: [200]\n   2. [missing_required] POST /img thiáº¿u trÆ°á»ng required \u0027content\u0027\n      why: \u0027content\u0027 lÃ  trÆ°á»ng báº¯t buá»c duy nháº¥t trong schema. Bá» qua nÃ³ Äá» kiá»m tra validation error.\n      expect: [422]\n   3. [invalid_type_or_format] POST /img vá»i quality lÃ  string thay vÃ¬ integer\n      why: TrÆ°á»ng \u0027quality\u0027 yÃªu cáº§u kiá»u integer hoáº·c null. Gá»­i string Äá» kiá»m tra type validation.\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /img khÃ´ng yÃªu cáº§u auth - skip\n      why: Operation nÃ y cÃ³ auth_required=false, khÃ´ng cÃ³ cÆ¡ cháº¿ xÃ¡c thá»±c nÃ o ÄÆ°á»£c mÃ´ táº£.\n      skip: true\n      skip_reason: Operation khÃ´ng yÃªu cáº§u authentication (auth_required=false), test unauthorized khÃ´ng phÃ¹ há»£p.\n   5. [resource_not_found] POST /img khÃ´ng cÃ³ path parameter - skip\n      why: Operation POST /img khÃ´ng cÃ³ path parameter nÃ o Äáº¡i diá»n cho resource identifier, khÃ´ng thá» táº¡o case not found.\n      skip: true\n      skip_reason: KhÃ´ng cÃ³ path parameter resource identifier trong operation nÃ y, test resource_not_found khÃ´ng phÃ¹ há»£p.\n",
+                     "status_message":  "Workflow `7737c3e4f7f74dedaa677429a0b16fee` Äang á» phase `pending_review`. Target: `img_api_prod`. Canonical command: `test target img_api_prod /img POST positive missing invalid`.",
+                     "selected_target":  "img_api_prod",
+                     "candidate_targets":  [
+                                               "img_local",
+                                               "img_api_staging",
+                                               "img_api_prod"
+                                           ],
+                     "selection_question":  null,
+                     "scope_confirmation_question":  "Do you want to specifically test the **POST /img** endpoint (belonging to the \u0027Img\u0027 group) on the target **img_api_prod**, or do you want to test all the other endpoints (such as POST /FB, POST /post/x, POST /X, POST /X/content, POST /YT)?",
+                     "scope_confirmation_summary":  "NgÆ°á»i dÃ¹ng chá» muá»n test nhÃ³m Img, khÃ´ng test cÃ¡c nhÃ³m khÃ¡c. NhÃ³m Img chá»©a operation image_generate_img_post.",
+                     "canonical_command":  "test target img_api_prod /img POST positive missing invalid",
+                     "understanding_explanation":  "Initial understanding: ÄÃ£ xÃ¡c Äá»nh target lÃ  `img_api_prod` vÃ  ÄÃ£ chá»t scope cuá»i cÃ¹ng theo xÃ¡c nháº­n cá»§a ngÆ°á»i dÃ¹ng. NhÃ³m ÄÃ£ chá»n: img. NhÃ³m bá» loáº¡i trá»«: fb, post, x, yt. Operation cuá»i cÃ¹ng: HTTPMETHOD.POST /img. LÃ½ do: NgÆ°á»i dÃ¹ng chá» muá»n test nhÃ³m Img, khÃ´ng test cÃ¡c nhÃ³m khÃ¡c. NhÃ³m Img chá»©a operation image_generate_img_post. Initial scope operations: POST /img. Current approved review scope for target `img_api_prod`: Final active operations: POST /img. Final approved scope operations: POST /img.",
+                     "preferred_language":  "vi",
+                     "language_policy":  "adaptive",
+                     "available_actions":  [
+                                               "approve",
+                                               "revise",
+                                               "show_review_scope",
+                                               "cancel",
+                                               "status",
+                                               "help"
+                                           ],
+                     "needs_user_input":  true,
+                     "finalized":  false,
+                     "cancelled":  false,
+                     "rerun_requested":  false,
+                     "rerun_user_text":  null,
+                     "artifacts":  [
+                                       {
+                                           "artifact_type":  "draft_report_json",
+                                           "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.json",
+                                           "stage":  "review",
+                                           "storage_backend":  "filesystem"
+                                       },
+                                       {
+                                           "artifact_type":  "draft_report_md",
+                                           "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.md",
+                                           "stage":  "review",
+                                           "storage_backend":  "filesystem"
+                                       }
+                                   ]
+                 },
+    "snapshot":  null,
+    "artifacts":  [
+                      {
+                          "artifact_type":  "draft_report_json",
+                          "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.json",
+                          "stage":  "review",
+                          "storage_backend":  "filesystem"
+                      },
+                      {
+                          "artifact_type":  "draft_report_md",
+                          "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.md",
+                          "stage":  "review",
+                          "storage_backend":  "filesystem"
+                      }
+                  ],
+    "error":  null
+}

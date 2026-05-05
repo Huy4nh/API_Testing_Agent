@@ -738,6 +738,37 @@ class ConversationRouter:
             "go on",
             "tiếp tục",
             "tiep tuc",
+
+            # Go-ahead / proceed intent in review phase.
+            # These should only open the review-action path; final approve/revise/cancel
+            # is still decided by the review action AI.
+            "quất",
+            "quat",
+            "quất đi",
+            "quat di",
+            "triển khai",
+            "trien khai",
+            "triển khai đi",
+            "trien khai di",
+            "chạy đi",
+            "chay di",
+            "chạy luôn",
+            "chay luon",
+            "làm đi",
+            "lam di",
+            "làm luôn",
+            "lam luon",
+            "tiến hành",
+            "tien hanh",
+            "tiến hành đi",
+            "tien hanh di",
+            "bắt đầu chạy",
+            "bat dau chay",
+            "go ahead",
+            "proceed",
+            "run it",
+            "execute it",
+            "ship it",
         ]
         revise_tokens = [
             "revise",

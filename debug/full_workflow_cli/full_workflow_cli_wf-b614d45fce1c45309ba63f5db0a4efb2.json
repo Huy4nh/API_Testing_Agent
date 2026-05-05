@@ -1,0 +1,189 @@
+{
+  "workflow_id": "ae80d194f7ce4b0c90a94e09557900bb",
+  "thread_id": "wf-b614d45fce1c45309ba63f5db0a4efb2",
+  "phase": "pending_review",
+  "assistant_message": "Bạn đang ở bước review. Bạn có thể approve, yêu cầu revise, hỏi về scope hiện tại, hoặc cancel.",
+  "status_message": "Workflow `ae80d194f7ce4b0c90a94e09557900bb` đang ở phase `pending_review`. Target: `img_local`. Canonical command: `test target img_local /img POST /post/x POST positive missing invalid`.",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_local /img POST /post/x POST positive missing invalid",
+  "understanding_explanation": "Initial understanding: Đã xác định target là `img_local` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng đã xác nhận chỉ chạy group \"img\", bao gồm operation image_generate_img_post (POST /img). Các group còn lại (fb, post, x, yt) được loại trừ. Initial scope operations: POST /img. Scope changed during review: 1. Feedback `thêm X post ấy`; before: POST /img; after: POST /img, POST /post/x; note: Feedback đã mở rộng phạm vi test theo yêu cầu: thêm X post ấy. Current approved review scope for target `img_local`: Final active operations: POST /img, POST /post/x. Latest review feedback: `thêm X post ấy`. Scope note: Feedback đã mở rộng phạm vi test theo yêu cầu: thêm X post ấy Final approved scope operations: POST /img, POST /post/x.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Bạn muốn test cụ thể endpoint nào? Hệ thống hiện có các endpoint sau:\n1. POST /FB (nhóm Fb)\n2. **POST /img** (nhóm Img)\n3. POST /post/x (nhóm Post)\n4. POST /X (nhóm X)\n5. POST /X/content (nhóm X)\n6. POST /YT (nhóm Yt)\n\nBạn có muốn test **POST /img** (nhóm Img) không, hay bạn muốn test một endpoint/nhóm khác?",
+  "scope_confirmation_summary": "Người dùng đã xác nhận chỉ chạy group \"img\", bao gồm operation image_generate_img_post (POST /img). Các group còn lại (fb, post, x, yt) được loại trừ.",
+  "scope_selection_mode": "groups",
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [
+    "img"
+  ],
+  "selected_scope_operation_ids": [
+    "image_generate_img_post"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "applied_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "latest_scope_selection_source": null,
+  "latest_scope_agent_action": null,
+  "latest_scope_agent_reason": null,
+  "last_scope_user_message": null,
+  "draft_report_json_path": "reports\\testcase_drafts\\img_local\\wf-b614d45fce1c45309ba63f5db0a4efb2\\round_03.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_local\\wf-b614d45fce1c45309ba63f5db0a4efb2\\round_03.md",
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "approve",
+    "revise",
+    "show_review_scope",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

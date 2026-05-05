@@ -1,0 +1,55 @@
+﻿{
+    "ok":  true,
+    "operation":  "continue_workflow",
+    "actor_context":  {
+                          "actor_id":  "demo_script",
+                          "session_id":  "demo_headless_rest_workflow",
+                          "user_id":  "local_user",
+                          "org_id":  "local_org"
+                      },
+    "workflow":  {
+                     "workflow_id":  "7737c3e4f7f74dedaa677429a0b16fee",
+                     "thread_id":  "wf-f1cd8e2035a6416ea7f03ba43b6c92ee",
+                     "phase":  "pending_scope_confirmation",
+                     "current_target":  "img_api_prod",
+                     "assistant_message":  "The original request only mentions `\u0027img\u0027` - a generic token that also appears in the endpoint name `\u0027/img\u0027` and the target name `\u0027img_api_prod\u0027`, so it cannot be determined that this is a clearly user-specified scope. The testing scope needs to be confirmed.\nTarget `img_api_prod` has multiple available capabilities.\nTarget `img_api_prod` currently has approximately 6 operations grouped into 5 functional groups. Before generating test cases, please confirm whether you want to test all of them, by group, or by specific operations.\nFunction groups:\n1. Fb\n   - Operations related to fb\n   - Operations: 1 | e.g. POST /FB\n2. Img\n   - Operations related to img\n   - Operations: 1 | e.g. POST /img\n3. Post\n   - Operations related to post\n   - Operations: 1 | e.g. POST /post/x\n4. X\n   - Operations related to x\n   - Operations: 2 | e.g. POST /X, POST /X/content\n5. Yt\n   - Operations related to yt\n   - Operations: 1 | e.g. POST /YT\nDo you want to specifically test the **POST /img** endpoint (belonging to the \u0027Img\u0027 group) on the target **img_api_prod**, or do you want to test all the other endpoints (such as POST /FB, POST /post/x, POST /X, POST /X/content, POST /YT)?",
+                     "status_message":  "Workflow `7737c3e4f7f74dedaa677429a0b16fee` is currently in phase `pending_scope_confirmation`. Target: `img_api_prod`. Do you want to specifically test the **POST /img** endpoint (belonging to the \u0027Img\u0027 group) on the target **img_api_prod**, or do you want to test all the other endpoints (such as POST /FB, POST /post/x, POST /X, POST /X/content, POST /YT)?",
+                     "selected_target":  "img_api_prod",
+                     "candidate_targets":  [
+                                               "img_local",
+                                               "img_api_staging",
+                                               "img_api_prod"
+                                           ],
+                     "selection_question":  null,
+                     "scope_confirmation_question":  "Do you want to specifically test the **POST /img** endpoint (belonging to the \u0027Img\u0027 group) on the target **img_api_prod**, or do you want to test all the other endpoints (such as POST /FB, POST /post/x, POST /X, POST /X/content, POST /YT)?",
+                     "scope_confirmation_summary":  "Target `img_api_prod` currently has approximately 6 operations grouped into 5 functional groups. Before generating test cases, please confirm whether you want to test all of them, by group, or by specific operations.",
+                     "canonical_command":  null,
+                     "understanding_explanation":  "Target `img_api_prod` has been identified, but the functional scope to be tested is not yet clear enough, so the scope needs to be confirmed before generating test cases.",
+                     "preferred_language":  "en",
+                     "language_policy":  "adaptive",
+                     "available_actions":  [
+                                               "resume_scope_confirmation",
+                                               "show_scope_catalog",
+                                               "show_scope_group_details",
+                                               "show_scope_operation_details",
+                                               "ask_scope_recommendation",
+                                               "apply_scope_recommendation",
+                                               "cancel",
+                                               "status",
+                                               "help"
+                                           ],
+                     "needs_user_input":  true,
+                     "finalized":  false,
+                     "cancelled":  false,
+                     "rerun_requested":  false,
+                     "rerun_user_text":  null,
+                     "artifacts":  [
+
+                                   ]
+                 },
+    "snapshot":  null,
+    "artifacts":  [
+
+                  ],
+    "error":  null
+}

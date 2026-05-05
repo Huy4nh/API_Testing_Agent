@@ -1,0 +1,186 @@
+{
+  "workflow_id": "117f9001020541929b4ff03ca781cc74",
+  "thread_id": "wf-d05a2c4620c24ab8bc519c6da750e26b",
+  "phase": "finalized",
+  "assistant_message": "Tôi đã chốt final report. File chính thức nằm tại `reports\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.json` và `reports\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.md`.",
+  "status_message": "Workflow `117f9001020541929b4ff03ca781cc74` đang ở phase `finalized`. Target: `img_api_prod`. Canonical command: `test target img_api_prod /img POST /FB POST /YT POST positive missing invalid`. Staged final report: `reports\\_staging\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.md`. Final report: `reports\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.md`.",
+  "selected_target": "img_api_prod",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": "test target img_api_prod /img POST /FB POST /YT POST positive missing invalid",
+  "understanding_explanation": "Initial understanding: Đã xác định target là `img_api_prod` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img. Operation cuối cùng: HTTPMETHOD.POST /img. Lý do: Người dùng đã xác nhận chỉ kiểm thử nhóm `img`, bao gồm operation `image_generate_img_post` (POST /img). Các nhóm fb, post, x, yt không được chọn. Initial scope operations: POST /img. Scope changed during review: 1. Feedback `thêm post x`; before: POST /img; after: POST /img, POST /post/x; note: Feedback đã mở rộng phạm vi test theo yêu cầu: thêm post x. 2. Feedback `bỏ post x thêm yt và fb`; before: POST /img, POST /post/x; after: POST /img, POST /FB, POST /YT; note: Feedback đã cập nhật phạm vi test theo yêu cầu: bỏ post x thêm yt và fb. Current approved review scope for target `img_api_prod`: Final active operations: POST /img, POST /FB, POST /YT. Latest review feedback: `bỏ post x thêm yt và fb`. Scope note: Feedback đã cập nhật phạm vi test theo yêu cầu: bỏ post x thêm yt và fb Final approved scope operations: POST /img, POST /FB, POST /YT.",
+  "preferred_language": "vi",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Which specific endpoint in the target 'img_api_prod' do you want to test? Here are the available endpoints:\n1. POST /FB (Fb)\n2. POST /img (Img)\n3. POST /post/x (Post)\n4. POST /X (X)\n5. POST /X/content (X)\n6. POST /YT (Yt)\n\nDo you want to test **POST /img** or a different endpoint/group?",
+  "scope_confirmation_summary": "Người dùng đã xác nhận chỉ kiểm thử nhóm `img`, bao gồm operation `image_generate_img_post` (POST /img). Các nhóm fb, post, x, yt không được chọn.",
+  "scope_selection_mode": "groups",
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [
+    "img"
+  ],
+  "selected_scope_operation_ids": [
+    "image_generate_img_post"
+  ],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "applied_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "latest_scope_selection_source": null,
+  "latest_scope_agent_action": null,
+  "latest_scope_agent_reason": null,
+  "last_scope_user_message": null,
+  "draft_report_json_path": "reports\\testcase_drafts\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\round_03.json",
+  "draft_report_md_path": "reports\\testcase_drafts\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\round_03.md",
+  "execution_report_json_path": "reports\\execution_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\execution_batch.json",
+  "execution_report_md_path": "reports\\execution_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\execution_batch.md",
+  "validation_report_json_path": "reports\\validation_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\validation_batch.json",
+  "validation_report_md_path": "reports\\validation_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\validation_batch.md",
+  "staged_final_report_json_path": "reports\\_staging\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.json",
+  "staged_final_report_md_path": "reports\\_staging\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.md",
+  "final_report_json_path": "reports\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.json",
+  "final_report_md_path": "reports\\final_runs\\img_api_prod\\wf-d05a2c4620c24ab8bc519c6da750e26b\\final_summary.md",
+  "rerun_user_text": null,
+  "finalized": true,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "start_new_workflow",
+    "status",
+    "help"
+  ]
+}

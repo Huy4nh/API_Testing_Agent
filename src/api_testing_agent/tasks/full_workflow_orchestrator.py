@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import Any, cast
+from typing import Any
 
 from api_testing_agent.config import Settings
-from api_testing_agent.core.scope_recommendation_agent import ScopeRecommendationAgent
 from api_testing_agent.core.target_registry import TargetRegistryError
 from api_testing_agent.logging_config import bind_logger, get_logger
 from api_testing_agent.tasks.conversation_router import ConversationRouter
@@ -45,7 +44,7 @@ from api_testing_agent.tasks.workflow_state_store import (
     WorkflowStateStoreProtocol,
 )
 from api_testing_agent.tasks.workflow_text_localizer import WorkflowTextLocalizer
-
+from api_testing_agent.core.scope_recommendation_agent import ScopeRecommendationAgent
 
 class FullWorkflowOrchestrator:
     def __init__(
@@ -126,20 +125,6 @@ class FullWorkflowOrchestrator:
             return value
         lowered = str(value).strip().lower()
         for item in ScopeSelectionMode:
-            if item.value == lowered:
-                return item
-        return None
-
-    def _coerce_scope_recommendation_mode(
-        self,
-        value: ScopeRecommendationMode | str | None,
-    ) -> ScopeRecommendationMode | None:
-        if value is None:
-            return None
-        if isinstance(value, ScopeRecommendationMode):
-            return value
-        lowered = str(value).strip().lower()
-        for item in ScopeRecommendationMode:
             if item.value == lowered:
                 return item
         return None
@@ -518,9 +503,6 @@ class FullWorkflowOrchestrator:
 
             if route.intent == RouterIntent.RESUME_SCOPE_CONFIRMATION:
                 self._clear_pending_clarification(snapshot)
-                snapshot.last_scope_user_message = message
-                snapshot.scope_confirmation_history.append(message)
-                self._state_store.save(snapshot)
 
                 review_result = self._review_orchestrator.resume_scope_confirmation(
                     thread_id,
@@ -813,36 +795,6 @@ class FullWorkflowOrchestrator:
                 if prior_snapshot is not None
                 else []
             ),
-            latest_scope_recommendation=(
-                prior_snapshot.latest_scope_recommendation
-                if prior_snapshot is not None
-                else WorkflowScopeRecommendation()
-            ),
-            applied_scope_recommendation=(
-                prior_snapshot.applied_scope_recommendation
-                if prior_snapshot is not None
-                else WorkflowScopeRecommendation()
-            ),
-            latest_scope_selection_source=(
-                prior_snapshot.latest_scope_selection_source
-                if prior_snapshot is not None
-                else None
-            ),
-            latest_scope_agent_action=(
-                prior_snapshot.latest_scope_agent_action
-                if prior_snapshot is not None
-                else None
-            ),
-            latest_scope_agent_reason=(
-                prior_snapshot.latest_scope_agent_reason
-                if prior_snapshot is not None
-                else None
-            ),
-            last_scope_user_message=(
-                prior_snapshot.last_scope_user_message
-                if prior_snapshot is not None
-                else None
-            ),
             review_feedback_history=list(
                 prior_snapshot.review_feedback_history if prior_snapshot else []
             ),
@@ -923,8 +875,7 @@ class FullWorkflowOrchestrator:
                 else None
             ),
             last_router_reason=(
-                prior_snapshot.last_router_reason if prior_snapshot is not None
-                else None
+                prior_snapshot.last_router_reason if prior_snapshot is not None else None
             ),
         )
 
@@ -1633,13 +1584,6 @@ class FullWorkflowOrchestrator:
                         f"     - {operation.description or operation.summary}"
                     )
 
-        snapshot.last_scope_user_message = selector
-        snapshot.latest_scope_agent_action = "show_scope_group_details"
-        snapshot.latest_scope_agent_reason = (
-            f"group_selector={selector}; group_id={group.group_id}"
-        )
-        self._state_store.save(snapshot)
-
         return self._snapshot_to_result(
             snapshot,
             assistant_message="\n".join(lines),
@@ -1701,13 +1645,6 @@ class FullWorkflowOrchestrator:
                     f"- Cần auth: {'có' if operation.auth_required else 'không'}"
                 )
 
-        snapshot.last_scope_user_message = selector
-        snapshot.latest_scope_agent_action = "show_scope_operation_details"
-        snapshot.latest_scope_agent_reason = (
-            f"operation_selector={selector}; operation_id={operation.operation_id}"
-        )
-        self._state_store.save(snapshot)
-
         return self._snapshot_to_result(
             snapshot,
             assistant_message="\n".join(lines),
@@ -1719,7 +1656,7 @@ class FullWorkflowOrchestrator:
         snapshot: WorkflowContextSnapshot,
         group_ids: list[str],
     ) -> list[str]:
-        wanted = set(group_ids)
+        wanted = {str(group_id).strip() for group_id in group_ids if str(group_id).strip()}
         operation_ids: list[str] = []
         seen: set[str] = set()
 
@@ -1745,55 +1682,106 @@ class FullWorkflowOrchestrator:
         if callable(method):
             method(thread_id, recommendation=recommendation)
 
-    def _apply_review_scope_recommendation(
+    def _compose_scope_selection_message_from_recommendation(
+        self,
+        recommendation: WorkflowScopeRecommendation,
+    ) -> str:
+        group_refs = [item for item in recommendation.group_ids if str(item).strip()]
+        if not group_refs:
+            return "clarify scope"
+
+        if recommendation.mode == ScopeRecommendationMode.DEPRIORITIZE:
+            return f"exclude groups: {', '.join(group_refs)}"
+
+        return f"only groups: {', '.join(group_refs)}"
+
+    def _should_apply_top_scope_recommendation_only(
         self,
         *,
-        thread_id: str,
         user_message: str,
-    ) -> ReviewWorkflowResult | None:
-        method = getattr(
-            self._review_orchestrator,
-            "apply_latest_scope_recommendation",
-            None,
-        )
-        if not callable(method):
-            return None
+    ) -> bool:
+        normalized = self._normalize_lookup_text(user_message)
+        if not normalized:
+            return False
 
-        result = method(thread_id, user_message=user_message)
-        return cast(ReviewWorkflowResult | None, result)
+        apply_all_markers = [
+            "tất cả",
+            "tat ca",
+            "toàn bộ",
+            "toan bo",
+            "hết",
+            "het",
+            "all",
+            "everything",
+            "entire",
+            "full",
+            "toàn bộ các nhóm",
+            "toan bo cac nhom",
+            "test hết",
+            "test het",
+            "tất cả theo gợi ý",
+            "tat ca theo goi y",
+            "theo danh sách",
+            "theo danh sach",
+            "all recommended",
+            "full recommendation",
+        ]
+        if self._contains_any_text(normalized, apply_all_markers):
+            return False
 
-    def _apply_review_structured_scope_selection(
+        top_only_markers = [
+            "ưu tiên thôi",
+            "uu tien thoi",
+            "cái nào ưu tiên",
+            "cai nao uu tien",
+            "cái ưu tiên",
+            "cai uu tien",
+            "ưu tiên nhất",
+            "uu tien nhat",
+            "quan trọng nhất",
+            "quan trong nhat",
+            "nhóm đầu tiên",
+            "nhom dau tien",
+            "cái đầu tiên",
+            "cai dau tien",
+            "lấy cái đầu",
+            "lay cai dau",
+            "lấy cái ưu tiên",
+            "lay cai uu tien",
+            "chọn cái ưu tiên",
+            "chon cai uu tien",
+            "chọn nhóm ưu tiên",
+            "chon nhom uu tien",
+            "test nhóm ưu tiên",
+            "test nhom uu tien",
+            "chỉ nhóm đầu",
+            "chi nhom dau",
+            "chỉ cái đầu",
+            "chi cai dau",
+            "chỉ ưu tiên",
+            "chi uu tien",
+            "top 1",
+            "top one",
+            "first one",
+            "first group",
+            "highest priority",
+            "most important",
+            "only the first",
+            "just the first",
+            "just top",
+            "only top",
+            "one priority",
+        ]
+
+        return self._contains_any_text(normalized, top_only_markers)
+
+    def _contains_any_text(
         self,
-        *,
-        thread_id: str,
-        selected_group_ids: list[str],
-        selected_operation_ids: list[str],
-        excluded_group_ids: list[str],
-        excluded_operation_ids: list[str],
-        scope_selection_mode: ScopeSelectionMode | None,
-        user_message: str,
-        reason: str | None = None,
-    ) -> ReviewWorkflowResult | None:
-        method = getattr(
-            self._review_orchestrator,
-            "apply_structured_scope_selection",
-            None,
-        )
-        if not callable(method):
-            return None
+        text: str,
+        tokens: list[str],
+    ) -> bool:
+        return any(token in text for token in tokens)
 
-        result = method(
-            thread_id,
-            selected_group_ids=selected_group_ids,
-            selected_operation_ids=selected_operation_ids,
-            excluded_group_ids=excluded_group_ids,
-            excluded_operation_ids=excluded_operation_ids,
-            scope_selection_mode=scope_selection_mode,
-            user_message=user_message,
-            reason=reason,
-        )
-        return cast(ReviewWorkflowResult | None, result)
-    
     def _build_scope_recommendation_result(
         self,
         snapshot: WorkflowContextSnapshot | None,
@@ -1922,10 +1910,12 @@ class FullWorkflowOrchestrator:
         if snapshot is None:
             return self._build_scope_confirmation_result(snapshot)
 
-        recommendation = snapshot.latest_scope_recommendation
-        if not recommendation.has_payload() or (
-            not recommendation.group_ids and not recommendation.operation_ids
-        ):
+        recommendation = getattr(
+            snapshot,
+            "latest_scope_recommendation",
+            WorkflowScopeRecommendation(),
+        )
+        if not recommendation.has_payload() or not recommendation.group_ids:
             return self._build_clarification_result(
                 snapshot,
                 self._localize(
@@ -1935,14 +1925,15 @@ class FullWorkflowOrchestrator:
                 ),
             )
 
+        apply_top_only = self._should_apply_top_scope_recommendation_only(
+            user_message=user_message,
+        )
+
         if recommendation.mode == ScopeRecommendationMode.DEPRIORITIZE:
             excluded_group_ids = list(recommendation.group_ids)
-            excluded_operation_ids = (
-                list(recommendation.operation_ids)
-                or self._expand_group_ids_to_operation_ids(
-                    snapshot=snapshot,
-                    group_ids=excluded_group_ids,
-                )
+            excluded_operation_ids = self._expand_group_ids_to_operation_ids(
+                snapshot=snapshot,
+                group_ids=excluded_group_ids,
             )
             all_group_ids = [item.group_id for item in snapshot.scope_catalog_groups]
             all_operation_ids = [
@@ -1957,18 +1948,47 @@ class FullWorkflowOrchestrator:
                 if item not in set(excluded_operation_ids)
             ]
             selection_mode = ScopeSelectionMode.CUSTOM
+            applied_recommendation = recommendation
+
         else:
-            selected_group_ids = list(recommendation.group_ids)
-            selected_operation_ids = (
-                list(recommendation.operation_ids)
-                or self._expand_group_ids_to_operation_ids(
-                    snapshot=snapshot,
-                    group_ids=selected_group_ids,
+            recommended_group_ids = [
+                str(item).strip()
+                for item in list(recommendation.group_ids)
+                if str(item).strip()
+            ]
+
+            if apply_top_only and recommended_group_ids:
+                selected_group_ids = [recommended_group_ids[0]]
+                application_reason = self._localize(
+                    snapshot.preferred_language,
+                    "Người dùng muốn áp dụng nhóm ưu tiên nhất trong gợi ý, không phải toàn bộ danh sách gợi ý.",
+                    "The user wants to apply only the top-priority recommended group, not the whole recommendation list.",
                 )
+            else:
+                selected_group_ids = list(recommended_group_ids)
+                application_reason = recommendation.rationale or self._localize(
+                    snapshot.preferred_language,
+                    "Áp dụng toàn bộ danh sách nhóm được gợi ý.",
+                    "Applied the full recommended group list.",
+                )
+
+            selected_operation_ids = self._expand_group_ids_to_operation_ids(
+                snapshot=snapshot,
+                group_ids=selected_group_ids,
             )
             excluded_group_ids = []
             excluded_operation_ids = []
             selection_mode = ScopeSelectionMode.GROUPS
+
+            applied_recommendation = WorkflowScopeRecommendation(
+                mode=recommendation.mode,
+                group_ids=selected_group_ids,
+                operation_ids=selected_operation_ids,
+                rationale=application_reason,
+                follow_up_question=recommendation.follow_up_question,
+                source_user_message=user_message,
+                rendered_message=recommendation.rendered_message,
+            )
 
         if not selected_operation_ids:
             return self._build_clarification_result(
@@ -1980,45 +2000,44 @@ class FullWorkflowOrchestrator:
                 ),
             )
 
-        snapshot.applied_scope_recommendation = recommendation
+        snapshot.applied_scope_recommendation = applied_recommendation
         snapshot.selected_scope_group_ids = selected_group_ids
         snapshot.selected_scope_operation_ids = selected_operation_ids
         snapshot.excluded_scope_group_ids = excluded_group_ids
         snapshot.excluded_scope_operation_ids = excluded_operation_ids
         snapshot.scope_selection_mode = selection_mode
-        snapshot.latest_scope_selection_source = "applied_scope_recommendation"
+        snapshot.latest_scope_selection_source = (
+            "applied_top_scope_recommendation"
+            if apply_top_only and recommendation.mode != ScopeRecommendationMode.DEPRIORITIZE
+            else "applied_scope_recommendation"
+        )
         snapshot.latest_scope_agent_action = "apply_scope_recommendation"
-        snapshot.latest_scope_agent_reason = recommendation.rationale or (
+        snapshot.latest_scope_agent_reason = applied_recommendation.rationale or (
             "Applied latest scope recommendation."
         )
         snapshot.last_scope_user_message = user_message
         snapshot.scope_confirmation_history.append(user_message)
         self._state_store.save(snapshot)
 
-        review_result = self._apply_review_scope_recommendation(
-            thread_id=snapshot.thread_id,
-            user_message=user_message,
+        synthetic_scope_message = self._compose_scope_selection_message_from_recommendation(
+            applied_recommendation
         )
 
-        if review_result is None:
-            review_result = self._apply_review_structured_scope_selection(
-                thread_id=snapshot.thread_id,
-                selected_group_ids=selected_group_ids,
-                selected_operation_ids=selected_operation_ids,
-                excluded_group_ids=excluded_group_ids,
-                excluded_operation_ids=excluded_operation_ids,
-                scope_selection_mode=selection_mode,
-                user_message=user_message,
-                reason=recommendation.rationale,
+        try:
+            review_result = self._review_orchestrator.resume_scope_confirmation(
+                snapshot.thread_id,
+                user_message=synthetic_scope_message,
             )
-
-        if review_result is None:
-            return self._build_clarification_result(
-                snapshot,
-                self._localize(
+        except Exception as exc:
+            self._logger.exception(
+                f"Failed to apply latest scope recommendation: {exc}"
+            )
+            return self._mark_error_snapshot(
+                snapshot=snapshot,
+                error_message=self._localize(
                     snapshot.preferred_language,
-                    "Workflow hiện tại chưa hỗ trợ áp dụng gợi ý scope theo structured path. Hãy chọn nhóm hoặc operation cụ thể.",
-                    "The current workflow does not yet support applying the scope recommendation through the structured path. Please choose groups or operations explicitly.",
+                    f"Áp dụng gợi ý scope thất bại: {exc}",
+                    f"Failed to apply the scope recommendation: {exc}",
                 ),
             )
 
@@ -2097,12 +2116,6 @@ class FullWorkflowOrchestrator:
             selected_scope_operation_ids=list(snapshot.selected_scope_operation_ids),
             excluded_scope_group_ids=list(snapshot.excluded_scope_group_ids),
             excluded_scope_operation_ids=list(snapshot.excluded_scope_operation_ids),
-            latest_scope_recommendation=snapshot.latest_scope_recommendation,
-            applied_scope_recommendation=snapshot.applied_scope_recommendation,
-            latest_scope_selection_source=snapshot.latest_scope_selection_source,
-            latest_scope_agent_action=snapshot.latest_scope_agent_action,
-            latest_scope_agent_reason=snapshot.latest_scope_agent_reason,
-            last_scope_user_message=snapshot.last_scope_user_message,
             draft_report_json_path=snapshot.artifacts.draft_report_json_path,
             draft_report_md_path=snapshot.artifacts.draft_report_md_path,
             execution_report_json_path=snapshot.artifacts.execution_report_json_path,

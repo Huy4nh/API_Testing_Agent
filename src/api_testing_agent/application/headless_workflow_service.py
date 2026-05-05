@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from typing import Any, Protocol, cast
 
 from api_testing_agent.application.workflow_service_models import (
@@ -29,17 +30,6 @@ from api_testing_agent.tasks.workflow_models import (
 
 
 class WorkflowOrchestratorProtocol(Protocol):
-    """
-    Protocol mỏng để HeadlessWorkflowService dễ test.
-
-    Production dùng FullWorkflowOrchestrator.
-    Unit test có thể truyền FakeOrchestrator mà không cần khởi tạo LLM/API.
-
-    Lưu ý:
-    - selected_language phải là SupportedLanguage | None để khớp chữ ký thật
-      của FullWorkflowOrchestrator.start_from_text().
-    """
-
     def start_from_text(
         self,
         text: str,
@@ -66,22 +56,8 @@ class HeadlessWorkflowService:
     """
     Headless application-layer contract for workflow control.
 
-    Tất cả adapter bên ngoài nên gọi service này, không gọi trực tiếp
-    FullWorkflowOrchestrator.
-
-    Adapter có thể là:
-    - CLI
-    - Telegram bot
-    - Web chat
-    - REST API
-    - Dashboard
-    - Internal SDK
-
-    Quy tắc:
-    - Service trả DTO ổn định.
-    - Không expose raw snapshot/result ra adapter.
-    - Không để exception đâm thủng adapter.
-    - Status/snapshot/list artifacts là read-only.
+    Adapter bên ngoài nên gọi service này, không gọi trực tiếp FullWorkflowOrchestrator.
+    Service này có một lớp normalize UX nhẹ để giảm lỗi route trong các phase hội thoại.
     """
 
     def __init__(
@@ -110,11 +86,6 @@ class HeadlessWorkflowService:
         self,
         request: StartWorkflowRequest,
     ) -> WorkflowServiceResponse:
-        """
-        Mở workflow mới từ raw input.
-
-        Đây là entrypoint chính cho adapter khi chưa có thread active.
-        """
         logger = self._bind_request_logger(
             operation="start_workflow",
             actor_context=request.actor_context,
@@ -172,15 +143,6 @@ class HeadlessWorkflowService:
         self,
         request: ContinueWorkflowRequest,
     ) -> WorkflowServiceResponse:
-        """
-        Tiếp tục workflow bằng một message hội thoại.
-
-        Dùng cho các phase như:
-        - pending_target_selection
-        - pending_scope_confirmation
-        - pending_review
-        - report_interaction
-        """
         thread_id = request.thread_id.strip()
         logger = self._bind_request_logger(
             operation="continue_workflow",
@@ -241,9 +203,24 @@ class HeadlessWorkflowService:
             )
 
         try:
+            routed_message = self._normalize_continue_message_for_phase(
+                snapshot=snapshot,
+                message=message,
+            )
+
+            if routed_message != message:
+                logger.info(
+                    "Normalized continuation message before passing to orchestrator.",
+                    extra={
+                        "phase": snapshot.phase.value,
+                        "original_message": message,
+                        "routed_message": routed_message,
+                    },
+                )
+
             result = self._orchestrator.continue_with_message(
                 thread_id=thread_id,
-                message=message,
+                message=routed_message,
             )
 
             logger.info(
@@ -279,11 +256,6 @@ class HeadlessWorkflowService:
         thread_id: str,
         actor_context: WorkflowActorContext = WorkflowActorContext(),
     ) -> WorkflowServiceResponse:
-        """
-        Alias read-only cho get_workflow_status.
-
-        Adapter có thể gọi resume khi user mở lại app/chat.
-        """
         return self.get_workflow_status(
             thread_id=thread_id,
             actor_context=actor_context,
@@ -295,14 +267,6 @@ class HeadlessWorkflowService:
         thread_id: str,
         actor_context: WorkflowActorContext = WorkflowActorContext(),
     ) -> WorkflowServiceResponse:
-        """
-        Lấy trạng thái workflow hiện tại.
-
-        Quan trọng:
-        - Method này là READ-ONLY.
-        - Không gọi continue_with_message("status").
-        - Không mutate messages/router decision/history.
-        """
         cleaned_thread_id = thread_id.strip()
         logger = self._bind_request_logger(
             operation="get_workflow_status",
@@ -357,9 +321,6 @@ class HeadlessWorkflowService:
         thread_id: str,
         actor_context: WorkflowActorContext = WorkflowActorContext(),
     ) -> WorkflowServiceResponse:
-        """
-        Lấy snapshot view đầy đủ hơn cho debug/admin/dashboard.
-        """
         cleaned_thread_id = thread_id.strip()
         logger = self._bind_request_logger(
             operation="get_workflow_snapshot",
@@ -410,13 +371,6 @@ class HeadlessWorkflowService:
         self,
         request: CancelWorkflowRequest,
     ) -> WorkflowServiceResponse:
-        """
-        Cancel workflow theo semantic API.
-
-        Transitional implementation:
-        - hiện bridge qua text "hủy" vì orchestrator chưa có cancel(thread_id) riêng.
-        - khi orchestrator có semantic method, đổi phần try bên dưới là đủ.
-        """
         thread_id = request.thread_id.strip()
         logger = self._bind_request_logger(
             operation="cancel_workflow",
@@ -509,11 +463,6 @@ class HeadlessWorkflowService:
         self,
         request: FinalizeWorkflowRequest,
     ) -> WorkflowServiceResponse:
-        """
-        Finalize workflow theo semantic API.
-
-        Finalize chỉ hợp lệ ở phase report_interaction.
-        """
         thread_id = request.thread_id.strip()
         logger = self._bind_request_logger(
             operation="finalize_workflow",
@@ -630,11 +579,6 @@ class HeadlessWorkflowService:
         self,
         request: RerunWorkflowRequest,
     ) -> WorkflowServiceResponse:
-        """
-        Request rerun từ report_interaction.
-
-        Rerun chỉ hợp lệ khi staged/final report interaction đang mở.
-        """
         thread_id = request.thread_id.strip()
         logger = self._bind_request_logger(
             operation="rerun_workflow",
@@ -734,11 +678,6 @@ class HeadlessWorkflowService:
         thread_id: str,
         actor_context: WorkflowActorContext = WorkflowActorContext(),
     ) -> WorkflowServiceResponse:
-        """
-        List artifact refs của workflow.
-
-        Method này là READ-ONLY.
-        """
         cleaned_thread_id = thread_id.strip()
         logger = self._bind_request_logger(
             operation="list_workflow_artifacts",
@@ -875,11 +814,6 @@ class HeadlessWorkflowService:
         self,
         snapshot: WorkflowContextSnapshot,
     ) -> WorkflowView:
-        """
-        Tạo WorkflowView từ snapshot cho các read-only endpoint như status.
-
-        Không cần assistant_message mới vì status không phải một turn hội thoại.
-        """
         artifacts = self._extract_artifacts_from_snapshot(snapshot)
 
         return WorkflowView(
@@ -912,7 +846,6 @@ class HeadlessWorkflowService:
         snapshot: WorkflowContextSnapshot,
     ) -> WorkflowSnapshotView:
         artifact_refs = self._extract_artifacts_from_snapshot(snapshot)
-
         phase_value = snapshot.phase.value
 
         active_report_session_id = None
@@ -1021,56 +954,16 @@ class HeadlessWorkflowService:
                 )
             )
 
-        add_artifact(
-            "draft_report_json",
-            "review",
-            snapshot.artifacts.draft_report_json_path,
-        )
-        add_artifact(
-            "draft_report_md",
-            "review",
-            snapshot.artifacts.draft_report_md_path,
-        )
-        add_artifact(
-            "execution_report_json",
-            "execution",
-            snapshot.artifacts.execution_report_json_path,
-        )
-        add_artifact(
-            "execution_report_md",
-            "execution",
-            snapshot.artifacts.execution_report_md_path,
-        )
-        add_artifact(
-            "validation_report_json",
-            "validation",
-            snapshot.artifacts.validation_report_json_path,
-        )
-        add_artifact(
-            "validation_report_md",
-            "validation",
-            snapshot.artifacts.validation_report_md_path,
-        )
-        add_artifact(
-            "staged_final_report_json",
-            "staged_final",
-            snapshot.artifacts.staged_final_report_json_path,
-        )
-        add_artifact(
-            "staged_final_report_md",
-            "staged_final",
-            snapshot.artifacts.staged_final_report_md_path,
-        )
-        add_artifact(
-            "final_report_json",
-            "finalized",
-            snapshot.artifacts.final_report_json_path,
-        )
-        add_artifact(
-            "final_report_md",
-            "finalized",
-            snapshot.artifacts.final_report_md_path,
-        )
+        add_artifact("draft_report_json", "review", snapshot.artifacts.draft_report_json_path)
+        add_artifact("draft_report_md", "review", snapshot.artifacts.draft_report_md_path)
+        add_artifact("execution_report_json", "execution", snapshot.artifacts.execution_report_json_path)
+        add_artifact("execution_report_md", "execution", snapshot.artifacts.execution_report_md_path)
+        add_artifact("validation_report_json", "validation", snapshot.artifacts.validation_report_json_path)
+        add_artifact("validation_report_md", "validation", snapshot.artifacts.validation_report_md_path)
+        add_artifact("staged_final_report_json", "staged_final", snapshot.artifacts.staged_final_report_json_path)
+        add_artifact("staged_final_report_md", "staged_final", snapshot.artifacts.staged_final_report_md_path)
+        add_artifact("final_report_json", "finalized", snapshot.artifacts.final_report_json_path)
+        add_artifact("final_report_md", "finalized", snapshot.artifacts.final_report_md_path)
 
         for index, path in enumerate(snapshot.artifacts.artifact_paths, start=1):
             cleaned = str(path or "").strip()
@@ -1184,6 +1077,408 @@ class HeadlessWorkflowService:
             return ["get_workflow_status", "list_workflow_artifacts", "start_workflow"]
 
         return ["get_workflow_status"]
+
+    def _normalize_continue_message_for_phase(
+        self,
+        *,
+        snapshot: WorkflowContextSnapshot,
+        message: str,
+    ) -> str:
+        phase_value = snapshot.phase.value
+        cleaned = message.strip()
+
+        if not cleaned:
+            return cleaned
+
+        if phase_value == "pending_target_selection":
+            return self._normalize_target_selection_message(cleaned)
+
+        if phase_value == "pending_scope_confirmation":
+            return self._normalize_pending_scope_confirmation_message(
+                snapshot=snapshot,
+                message=cleaned,
+            )
+
+        if phase_value == "pending_review":
+            return self._normalize_pending_review_message(cleaned)
+
+        return cleaned
+
+    def _normalize_target_selection_message(
+        self,
+        message: str,
+    ) -> str:
+        normalized = self._normalize_ascii_text(message)
+
+        production_aliases = {
+            "product",
+            "product env",
+            "product environment",
+            "production env",
+            "production environment",
+            "prod env",
+            "prod environment",
+            "moi truong product",
+            "moi truong production",
+            "moi truong prod",
+        }
+        if normalized in production_aliases:
+            return "production"
+
+        staging_aliases = {
+            "stage",
+            "staging env",
+            "staging environment",
+            "moi truong stage",
+            "moi truong staging",
+        }
+        if normalized in staging_aliases:
+            return "staging"
+
+        local_aliases = {
+            "local env",
+            "local environment",
+            "may local",
+            "moi truong local",
+        }
+        if normalized in local_aliases:
+            return "local"
+
+        return message
+
+    def _normalize_pending_scope_confirmation_message(
+        self,
+        *,
+        snapshot: WorkflowContextSnapshot,
+        message: str,
+    ) -> str:
+        """
+        Normalize input ở phase pending_scope_confirmation.
+
+        Core đang dễ hiểu câu có `POST /img` thành "xem chi tiết operation".
+        Vì vậy ở layer headless, nếu user có ý "chỉ chọn endpoint/group này",
+        ta chuyển thành "chỉ test nhóm Img" để core chốt scope thay vì show detail.
+        """
+        normalized = self._normalize_ascii_text(message)
+
+        if self._looks_like_headless_meta_message(normalized):
+            return message
+
+        if self._looks_like_scope_recommendation_request(normalized):
+            return message
+
+        if self._looks_like_scope_apply_recommendation(normalized):
+            return message
+
+        if self._looks_like_all_scope_selection(normalized):
+            return message
+
+        selected_group = self._extract_requested_scope_group(normalized)
+
+        if selected_group is not None and self._looks_like_only_scope_selection(normalized):
+            return f"chỉ test nhóm {selected_group}, không test các nhóm khác"
+
+        if selected_group is not None and self._looks_like_direct_scope_selection(normalized):
+            return f"chọn nhóm {selected_group}"
+
+        if self._looks_like_priority_only_selection(normalized):
+            fallback_group = self._infer_priority_group_from_snapshot(snapshot)
+            if fallback_group is not None:
+                return f"chỉ test nhóm {fallback_group}, không test các nhóm khác"
+
+        return message
+
+    def _normalize_pending_review_message(
+        self,
+        message: str,
+    ) -> str:
+        normalized = self._normalize_ascii_text(message)
+
+        if self._looks_like_headless_meta_message(normalized):
+            return message
+
+        if self._looks_like_explicit_review_action(normalized):
+            return message
+
+        if self._looks_like_review_revise_feedback(normalized):
+            return f"sửa scope theo feedback: {message}"
+
+        return message
+
+    def _looks_like_headless_meta_message(
+        self,
+        normalized: str,
+    ) -> bool:
+        meta_tokens = {
+            "help",
+            "tro giup",
+            "huong dan",
+            "status",
+            "trang thai",
+            "phase",
+            "dang o buoc nao",
+            "dang lam gi",
+            "scope hien tai",
+            "show review scope",
+            "show current scope",
+            "dang test nhung gi",
+            "dang review cai gi",
+            "co nhung chuc nang nao",
+            "operation nao",
+            "endpoint nao",
+            "gi vay",
+            "la sao",
+            "toi khong hieu",
+        }
+        return normalized in meta_tokens
+
+    def _looks_like_scope_recommendation_request(
+        self,
+        normalized: str,
+    ) -> bool:
+        return any(
+            token in normalized
+            for token in [
+                "goi y",
+                "recommend",
+                "suggest",
+                "nen test gi",
+                "nen chon gi",
+                "ban chon giup",
+                "chon giup",
+                "dai di",
+            ]
+        )
+
+    def _looks_like_scope_apply_recommendation(
+        self,
+        normalized: str,
+    ) -> bool:
+        return any(
+            token in normalized
+            for token in [
+                "theo goi y",
+                "ap dung goi y",
+                "lam theo goi y",
+                "trien khai goi y",
+                "chon theo goi y",
+            ]
+        )
+
+    def _looks_like_all_scope_selection(
+        self,
+        normalized: str,
+    ) -> bool:
+        return any(
+            token in normalized
+            for token in [
+                "tat ca",
+                "toan bo",
+                "all",
+                "all endpoints",
+                "test het",
+                "test tat ca",
+                "test toan bo",
+            ]
+        )
+
+    def _looks_like_only_scope_selection(
+        self,
+        normalized: str,
+    ) -> bool:
+        return any(
+            token in normalized
+            for token in [
+                "chi",
+                "thoi",
+                "only",
+                "just",
+                "khong test",
+                "khong chon",
+                "exclude",
+                "giu lai",
+                "tap trung",
+            ]
+        )
+
+    def _looks_like_direct_scope_selection(
+        self,
+        normalized: str,
+    ) -> bool:
+        return any(
+            token in normalized
+            for token in [
+                "chon",
+                "test",
+                "scope",
+                "xac nhan",
+                "confirm",
+                "proceed",
+                "lay",
+                "giu",
+            ]
+        )
+
+    def _looks_like_priority_only_selection(
+        self,
+        normalized: str,
+    ) -> bool:
+        return any(
+            token in normalized
+            for token in [
+                "uu tien thoi",
+                "cai nao uu tien",
+                "cai uu tien",
+                "nhom uu tien",
+                "top 1",
+                "dau tien thoi",
+                "first one",
+                "priority only",
+            ]
+        )
+
+    def _extract_requested_scope_group(
+        self,
+        normalized: str,
+    ) -> str | None:
+        if any(token in normalized for token in ["/img", "post /img", " img", "image", "generate"]):
+            return "Img"
+
+        if any(token in normalized for token in ["/fb", "post /fb", " facebook", " fb"]):
+            return "Fb"
+
+        if any(token in normalized for token in ["/yt", "post /yt", " youtube", " yt"]):
+            return "Yt"
+
+        if any(token in normalized for token in ["/post/x", "post/x", "post x"]):
+            return "Post"
+
+        if any(token in normalized for token in ["/x/content", "x/content", "post /x", " x "]):
+            return "X"
+
+        return None
+
+    def _infer_priority_group_from_snapshot(
+        self,
+        snapshot: WorkflowContextSnapshot,
+    ) -> str | None:
+        selected_target = self._normalize_ascii_text(str(snapshot.selected_target or ""))
+        original_text = self._normalize_ascii_text(str(snapshot.original_user_text or ""))
+        pending_question = self._normalize_ascii_text(
+            str(
+                snapshot.pending_router_clarification
+                or snapshot.scope_confirmation_question
+                or ""
+            )
+        )
+
+        combined = f"{selected_target} {original_text} {pending_question}"
+
+        if "img" in combined or "/img" in combined:
+            return "Img"
+
+        return None
+
+    def _looks_like_explicit_review_action(
+        self,
+        normalized: str,
+    ) -> bool:
+        explicit_tokens = [
+            "approve",
+            "approved",
+            "duyet",
+            "ok",
+            "ok roi",
+            "duoc",
+            "duoc roi",
+            "on",
+            "on roi",
+            "tot",
+            "tot roi",
+            "ngon",
+            "trien khai",
+            "chay di",
+            "tiep tuc",
+            "revise",
+            "sua",
+            "chinh",
+            "them",
+            "bot",
+            "doi",
+            "update",
+            "change",
+            "viet lai",
+            "cancel",
+            "huy",
+            "dung",
+            "stop",
+        ]
+        return any(token in normalized for token in explicit_tokens)
+
+    def _looks_like_review_revise_feedback(
+        self,
+        normalized: str,
+    ) -> bool:
+        scope_mutation_tokens = [
+            "giu lai",
+            "chi giu",
+            "chi lay",
+            "chi test",
+            "chi chay",
+            "tap trung",
+            "focus",
+            "only keep",
+            "only test",
+            "just keep",
+            "just test",
+            "keep only",
+            "remove",
+            "exclude",
+            "bo ",
+            "loai ",
+            "khong test",
+            "dung test",
+        ]
+
+        operation_tokens = [
+            "img",
+            "image",
+            "generate",
+            "generation",
+            "/img",
+            "fb",
+            "facebook",
+            "/fb",
+            "yt",
+            "youtube",
+            "/yt",
+            "x/content",
+            "/x",
+            "post/x",
+            "/post/x",
+        ]
+
+        has_scope_mutation = any(token in normalized for token in scope_mutation_tokens)
+        has_operation_signal = any(token in normalized for token in operation_tokens)
+
+        if has_scope_mutation and has_operation_signal:
+            return True
+
+        if has_operation_signal and any(token in normalized for token in ["thoi", "only", "just"]):
+            return True
+
+        return False
+
+    def _normalize_ascii_text(
+        self,
+        value: str,
+    ) -> str:
+        lowered = " ".join(value.strip().lower().split())
+        normalized = unicodedata.normalize("NFD", lowered)
+        without_accents = "".join(
+            ch for ch in normalized if unicodedata.category(ch) != "Mn"
+        )
+        return without_accents.replace("đ", "d")
 
     def _looks_like_confirmation_prompt(
         self,

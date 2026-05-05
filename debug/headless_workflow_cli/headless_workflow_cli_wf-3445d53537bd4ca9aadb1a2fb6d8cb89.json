@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "operation": "continue_workflow",
+  "actor_context": {
+    "actor_id": "manual_cli",
+    "session_id": "manual_headless_workflow_cli",
+    "user_id": "local_user",
+    "org_id": "local_org"
+  },
+  "workflow": {
+    "workflow_id": "21fe1d904cd34c949e7f595a99af8c3e",
+    "thread_id": "wf-3445d53537bd4ca9aadb1a2fb6d8cb89",
+    "phase": "pending_review",
+    "current_target": "img_api_prod",
+    "assistant_message": "Review round: 1\nOriginal request: test img\nCanonical command: test target img_api_prod /img POST /FB POST /YT POST /X POST /X/content POST /post/x POST positive missing invalid\nUnderstanding: Initial understanding: Đã xác định target là `img_api_prod` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, post, x, fb, yt. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /FB, HTTPMETHOD.POST /YT, .... Lý do: Đã áp dụng gợi ý các nhóm nên test trước. Initial scope operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x. Current approved review scope for target `img_api_prod`: Final active operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x. Final approved scope operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x.\nActive operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x\n\n1. POST /img (operation_id=image_generate_img_post)\n   1. [positive] POST /img with valid content URL and optional fields\n      why: Gửi request hợp lệ với trường bắt buộc 'content' là URL hợp lệ và các trường optional để kiểm tra response 200 thành công.\n      expect: [200]\n   2. [missing_required] POST /img without required 'content' field\n      why: Bỏ trường bắt buộc 'content' để kiểm tra server trả về lỗi validation 422.\n      expect: [422]\n   3. [invalid_type_or_format] POST /img with invalid type for 'quality' field (string instead of integer)\n      why: Truyền 'quality' kiểu string thay vì integer để kiểm tra validation trả về 422.\n      expect: [422]\n   4. [unauthorized_or_forbidden] Skip: operation does not require authentication\n      why: Operation POST /img không yêu cầu auth (auth_required=false), nên test unauthorized không phù hợp.\n      skip: true\n      skip_reason: Operation không yêu cầu xác thực (auth_required=false), test unauthorized không có giá trị.\n   5. [resource_not_found] Skip: no path parameter representing a resource identifier\n      why: Operation POST /img không có path parameter nào đại diện cho resource identifier, nên test not found không phù hợp.\n      skip: true\n      skip_reason: Không có path parameter resource identifier trong operation này nên không thể sinh case not found.\n\n2. POST /FB (operation_id=fb_get_content_FB_post)\n   1. [positive] POST /FB with valid Facebook URL as data\n      why: Gửi một URL Facebook hợp lệ trong field 'data' để kiểm tra endpoint hoạt động đúng\n      expect: [200]\n   2. [missing_required] POST /FB without required field 'data'\n      why: Bỏ field 'data' bắt buộc để kiểm tra server trả về lỗi validation\n      expect: [422]\n   3. [invalid_type_or_format] POST /FB with data as integer instead of string\n      why: Gửi 'data' là số nguyên thay vì string để kiểm tra validation type\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /FB - skip vì operation không yêu cầu auth\n      why: Operation auth_required=false, không cần kiểm tra unauthorized\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), test unauthorized không phù hợp\n   5. [resource_not_found] POST /FB - skip vì không có path parameter resource identifier\n      why: Endpoint /FB không có path parameter nào đại diện cho resource ID\n      skip: true\n      skip_reason: Không có path parameter đại diện resource identifier, test not found không phù hợp\n\n3. POST /YT (operation_id=yt_get_content_YT_post)\n   1. [positive] POST /YT với URL YouTube hợp lệ\n      why: Gửi một URL YouTube hợp lệ trong field 'data' để kiểm tra response thành công 200\n      expect: [200]\n   2. [missing_required] POST /YT thiếu field 'data' bắt buộc\n      why: Gửi body rỗng hoặc không có field 'data' để kiểm tra validation error\n      expect: [422]\n   3. [invalid_type_or_format] POST /YT với 'data' là số nguyên thay vì string\n      why: Gửi giá trị không phải string cho field 'data' để kiểm tra type validation\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /YT - không cần auth, skip\n      why: Operation này không yêu cầu xác thực (auth_required=false), test type unauthorized không phù hợp\n      skip: true\n      skip_reason: Operation không yêu cầu authentication (auth_required=false), unauthorized test không có ý nghĩa\n   5. [resource_not_found] POST /YT - không có path param resource identifier, skip\n      why: Endpoint /YT không có path parameter đại diện resource identifier nên không thể test resource not found\n      skip: true\n      skip_reason: Endpoint không có path parameter nào đại diện cho resource identifier, không thể tạo not found case\n\n4. POST /X (operation_id=x_get_content_X_post)\n   1. [positive] POST /X với data là URL hợp lệ\n      why: Gửi request với field 'data' là một URI hợp lệ để kiểm tra response 200 thành công\n      expect: [200]\n   2. [missing_required] POST /X thiếu field 'data' bắt buộc\n      why: Gửi request body rỗng không có field 'data' để kiểm tra validation error\n      expect: [422]\n   3. [invalid_type_or_format] POST /X với data là số nguyên thay vì string\n      why: Gửi field 'data' với kiểu integer để kiểm tra server từ chối kiểu không hợp lệ\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /X không yêu cầu auth - skip\n      why: Operation này không yêu cầu authentication (auth_required=false), nên test unauthorized không phù hợp\n      skip: true\n      skip_reason: Operation không yêu cầu authentication, test unauthorized không áp dụng\n   5. [resource_not_found] POST /X không có path parameter - skip\n      why: Operation không có path parameter đại diện resource identifier nên không thể test resource not found\n      skip: true\n      skip_reason: Không có path parameter resource identifier trong operation này\n\n5. POST /X/content (operation_id=x_content_X_content_post)\n   1. [positive] POST /X/content với data là URL hợp lệ\n      why: Gửi request hợp lệ với field 'data' là một URI hợp lệ để kiểm tra response 200 thành công.\n      expect: [200]\n   2. [missing_required] POST /X/content thiếu field 'data' bắt buộc\n      why: Gửi request không có field 'data' để kiểm tra validation error khi thiếu trường required.\n      expect: [422]\n   3. [invalid_type_or_format] POST /X/content với data là số nguyên thay vì string\n      why: Gửi field 'data' với kiểu integer để kiểm tra validation khi sai kiểu dữ liệu.\n      expect: [422]\n   4. [unauthorized_or_forbidden] POST /X/content - skip vì operation không yêu cầu auth\n      why: Operation auth_required=false, không có cơ chế auth nên không cần test unauthorized.\n      skip: true\n      skip_reason: Operation không yêu cầu xác thực (auth_required=false), test unauthorized không phù hợp.\n   5. [resource_not_found] POST /X/content - skip vì không có path parameter resource identifier\n      why: Endpoint không có path parameter đại diện cho resource identifier, không thể test 404 Not Found.\n      skip: true\n      skip_reason: Không có path parameter nào đại diện cho resource identifier, test not found không phù hợp.\n\n6. POST /post/x (operation_id=x_post_post_x_post)\n   1. [positive] POST /post/x với đầy đủ content, drive_img_link hợp lệ và prompt tùy chọn\n      why: Gửi request hợp lệ với tất cả các trường bắt buộc và trường tùy chọn để kiểm tra happy path\n      expect: [200]\n   2. [missing_required] POST /post/x thiếu trường content bắt buộc\n      why: Bỏ qua trường content (required) để kiểm tra validation error\n      expect: [422]\n   3. [invalid_type_or_format] POST /post/x với drive_img_link không phải URI hợp lệ (chuỗi rỗng hoặc sai format)\n      why: drive_img_link có ràng buộc URI format, gửi giá trị không hợp lệ để kiểm tra validation\n      expect: [200, 422]\n   4. [unauthorized_or_forbidden] POST /post/x không yêu cầu auth - skip\n      why: Operation không yêu cầu auth (auth_required=false), test type này không phù hợp\n      skip: true\n      skip_reason: Operation không yêu cầu xác thực (auth_required=false), không có cơ chế để test unauthorized\n   5. [resource_not_found] POST /post/x không có path parameter - skip\n      why: Endpoint không có path parameter nào đại diện resource identifier nên không thể test resource not found\n      skip: true\n      skip_reason: Không có path parameter resource identifier trong endpoint này, không thể sinh not found case\n",
+    "status_message": "Workflow `21fe1d904cd34c949e7f595a99af8c3e` đang ở phase `pending_review`. Target: `img_api_prod`. Canonical command: `test target img_api_prod /img POST /FB POST /YT POST /X POST /X/content POST /post/x POST positive missing invalid`.",
+    "selected_target": "img_api_prod",
+    "candidate_targets": [
+      "img_local",
+      "img_api_staging",
+      "img_api_prod"
+    ],
+    "selection_question": null,
+    "scope_confirmation_question": "Do you want to specifically test the **POST /img** endpoint (image creation) on the **img_api_prod** target, or do you want to test all endpoints in this target (including FB, Post, X, and YT)?",
+    "scope_confirmation_summary": "Đã áp dụng gợi ý các nhóm nên test trước.",
+    "canonical_command": "test target img_api_prod /img POST /FB POST /YT POST /X POST /X/content POST /post/x POST positive missing invalid",
+    "understanding_explanation": "Initial understanding: Đã xác định target là `img_api_prod` và đã chốt scope cuối cùng theo xác nhận của người dùng. Nhóm đã chọn: img, post, x, fb, yt. Operation cuối cùng: HTTPMETHOD.POST /img, HTTPMETHOD.POST /FB, HTTPMETHOD.POST /YT, .... Lý do: Đã áp dụng gợi ý các nhóm nên test trước. Initial scope operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x. Current approved review scope for target `img_api_prod`: Final active operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x. Final approved scope operations: POST /img, POST /FB, POST /YT, POST /X, POST /X/content, POST /post/x.",
+    "preferred_language": "vi",
+    "language_policy": "adaptive",
+    "available_actions": [
+      "approve",
+      "revise",
+      "show_review_scope",
+      "cancel",
+      "status",
+      "help"
+    ],
+    "needs_user_input": true,
+    "finalized": false,
+    "cancelled": false,
+    "rerun_requested": false,
+    "rerun_user_text": null,
+    "artifacts": [
+      {
+        "artifact_type": "draft_report_json",
+        "path": "reports\\testcase_drafts\\img_api_prod\\wf-3445d53537bd4ca9aadb1a2fb6d8cb89\\round_01.json",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      },
+      {
+        "artifact_type": "draft_report_md",
+        "path": "reports\\testcase_drafts\\img_api_prod\\wf-3445d53537bd4ca9aadb1a2fb6d8cb89\\round_01.md",
+        "stage": "review",
+        "storage_backend": "filesystem"
+      }
+    ]
+  },
+  "snapshot": null,
+  "artifacts": [
+    {
+      "artifact_type": "draft_report_json",
+      "path": "reports\\testcase_drafts\\img_api_prod\\wf-3445d53537bd4ca9aadb1a2fb6d8cb89\\round_01.json",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    },
+    {
+      "artifact_type": "draft_report_md",
+      "path": "reports\\testcase_drafts\\img_api_prod\\wf-3445d53537bd4ca9aadb1a2fb6d8cb89\\round_01.md",
+      "stage": "review",
+      "storage_backend": "filesystem"
+    }
+  ],
+  "error": null
+}

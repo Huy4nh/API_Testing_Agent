@@ -28,14 +28,19 @@ class RouterIntent(str, Enum):
     START_NEW_WORKFLOW = "start_new_workflow"
     RESUME_TARGET_SELECTION = "resume_target_selection"
     RESUME_SCOPE_CONFIRMATION = "resume_scope_confirmation"
+
     SHOW_SCOPE_CATALOG = "show_scope_catalog"
     SHOW_SCOPE_GROUP_DETAILS = "show_scope_group_details"
     SHOW_SCOPE_OPERATION_DETAILS = "show_scope_operation_details"
+
     ASK_SCOPE_RECOMMENDATION = "ask_scope_recommendation"
     APPLY_SCOPE_RECOMMENDATION = "apply_scope_recommendation"
+
     RESUME_REVIEW = "resume_review"
     SHOW_REVIEW_SCOPE = "show_review_scope"
+
     CONTINUE_REPORT_INTERACTION = "continue_report_interaction"
+
     HELP = "help"
     STATUS = "status"
     CLARIFY = "clarify"
@@ -88,7 +93,7 @@ class WorkflowScopeCatalogOperation:
 
 @dataclass
 class WorkflowScopeRecommendation:
-    mode: ScopeRecommendationMode | None = None
+    mode: ScopeRecommendationMode | str | None = None
     group_ids: list[str] = field(default_factory=list)
     operation_ids: list[str] = field(default_factory=list)
     rationale: str | None = None
@@ -98,12 +103,10 @@ class WorkflowScopeRecommendation:
 
     def has_payload(self) -> bool:
         return bool(
-            self.mode is not None
-            or self.group_ids
+            self.group_ids
             or self.operation_ids
             or self.rationale
             or self.follow_up_question
-            or self.source_user_message
             or self.rendered_message
         )
 
@@ -163,6 +166,7 @@ class WorkflowContextSnapshot:
     selected_scope_operation_ids: list[str] = field(default_factory=list)
     excluded_scope_group_ids: list[str] = field(default_factory=list)
     excluded_scope_operation_ids: list[str] = field(default_factory=list)
+
     scope_confirmation_history: list[str] = field(default_factory=list)
 
     latest_scope_recommendation: WorkflowScopeRecommendation = field(

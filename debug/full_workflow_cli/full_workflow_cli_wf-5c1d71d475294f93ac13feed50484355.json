@@ -1,0 +1,188 @@
+{
+  "workflow_id": "b4425e50733a4bd7b43344d695dab2d4",
+  "thread_id": "wf-5c1d71d475294f93ac13feed50484355",
+  "phase": "pending_scope_confirmation",
+  "assistant_message": "The original request only mentions `'test img'` — this is an ambiguous token, which also appears in the endpoint path `'/img'`, so it should not be considered as clearly defining the scope. The testing scope needs to be re-confirmed with the user.\nTarget `img_local` has multiple available capabilities.\nTarget `img_local` currently has approximately 6 operations grouped into 5 functional groups. Before generating test cases, please confirm whether you want to test all of them, by group, or by specific operations.\nFunction groups:\n1. Fb\n   - Operations related to fb\n   - Operations: 1 | e.g. POST /FB\n2. Img\n   - Operations related to img\n   - Operations: 1 | e.g. POST /img\n3. Post\n   - Operations related to post\n   - Operations: 1 | e.g. POST /post/x\n4. X\n   - Operations related to x\n   - Operations: 2 | e.g. POST /X, POST /X/content\n5. Yt\n   - Operations related to yt\n   - Operations: 1 | e.g. POST /YT\nWhich endpoint do you want to test? The system has identified 1 highly probable endpoint: **POST /img** (belonging to the 'Img' group). Do you want to test exactly this endpoint, or would you like to expand/narrow the testing scope?",
+  "status_message": "Workflow `b4425e50733a4bd7b43344d695dab2d4` is currently in phase `pending_scope_confirmation`. Target: `img_local`. Which endpoint do you want to test? The system has identified 1 highly probable endpoint: **POST /img** (belonging to the 'Img' group). Do you want to test exactly this endpoint, or would you like to expand/narrow the testing scope?",
+  "selected_target": "img_local",
+  "candidate_targets": [
+    "img_local",
+    "img_api_staging",
+    "img_api_prod"
+  ],
+  "selection_question": null,
+  "canonical_command": null,
+  "understanding_explanation": "Target `img_local` has been identified, but the functional scope that needs to be tested is not yet clear enough, so the scope must be confirmed before generating test cases.",
+  "preferred_language": "en",
+  "language_policy": "adaptive",
+  "scope_confirmation_question": "Which endpoint do you want to test? The system has identified 1 highly probable endpoint: **POST /img** (belonging to the 'Img' group). Do you want to test exactly this endpoint, or would you like to expand/narrow the testing scope?",
+  "scope_confirmation_summary": "Target `img_local` currently has approximately 6 operations grouped into 5 functional groups. Before generating test cases, please confirm whether you want to test all of them, by group, or by specific operations.",
+  "scope_selection_mode": null,
+  "scope_catalog_groups": [
+    {
+      "group_id": "fb",
+      "title": "Fb",
+      "description": "Operations related to fb",
+      "operation_ids": [
+        "fb_get_content_FB_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "img",
+      "title": "Img",
+      "description": "Operations related to img",
+      "operation_ids": [
+        "image_generate_img_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "post",
+      "title": "Post",
+      "description": "Operations related to post",
+      "operation_ids": [
+        "x_post_post_x_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "x",
+      "title": "X",
+      "description": "Operations related to x",
+      "operation_ids": [
+        "x_get_content_X_post",
+        "x_content_X_content_post"
+      ],
+      "tags": []
+    },
+    {
+      "group_id": "yt",
+      "title": "Yt",
+      "description": "Operations related to yt",
+      "operation_ids": [
+        "yt_get_content_YT_post"
+      ],
+      "tags": []
+    }
+  ],
+  "scope_catalog_operations": [
+    {
+      "operation_id": "fb_get_content_FB_post",
+      "method": "POST",
+      "path": "/FB",
+      "group_id": "fb",
+      "group_title": "Fb",
+      "summary": "Fb Get Content",
+      "description": "Retrieve content from Facebook.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "image_generate_img_post",
+      "method": "POST",
+      "path": "/img",
+      "group_id": "img",
+      "group_title": "Img",
+      "summary": "Image Generate",
+      "description": "Generate an image from the provided content.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_post_post_x_post",
+      "method": "POST",
+      "path": "/post/x",
+      "group_id": "post",
+      "group_title": "Post",
+      "summary": "X Post",
+      "description": "Publish a post to X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_get_content_X_post",
+      "method": "POST",
+      "path": "/X",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Get Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "x_content_X_content_post",
+      "method": "POST",
+      "path": "/X/content",
+      "group_id": "x",
+      "group_title": "X",
+      "summary": "X Content",
+      "description": "Retrieve content from X.",
+      "tags": [],
+      "auth_required": false
+    },
+    {
+      "operation_id": "yt_get_content_YT_post",
+      "method": "POST",
+      "path": "/YT",
+      "group_id": "yt",
+      "group_title": "Yt",
+      "summary": "Yt Get Content",
+      "description": "Retrieve content from YouTube.",
+      "tags": [],
+      "auth_required": false
+    }
+  ],
+  "selected_scope_group_ids": [],
+  "selected_scope_operation_ids": [],
+  "excluded_scope_group_ids": [],
+  "excluded_scope_operation_ids": [],
+  "latest_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "applied_scope_recommendation": {
+    "mode": null,
+    "group_ids": [],
+    "operation_ids": [],
+    "rationale": null,
+    "follow_up_question": null,
+    "source_user_message": null,
+    "rendered_message": null
+  },
+  "latest_scope_selection_source": null,
+  "latest_scope_agent_action": null,
+  "latest_scope_agent_reason": null,
+  "last_scope_user_message": null,
+  "draft_report_json_path": null,
+  "draft_report_md_path": null,
+  "execution_report_json_path": null,
+  "execution_report_md_path": null,
+  "validation_report_json_path": null,
+  "validation_report_md_path": null,
+  "staged_final_report_json_path": null,
+  "staged_final_report_md_path": null,
+  "final_report_json_path": null,
+  "final_report_md_path": null,
+  "rerun_user_text": null,
+  "finalized": false,
+  "cancelled": false,
+  "needs_user_input": true,
+  "available_actions": [
+    "resume_scope_confirmation",
+    "show_scope_catalog",
+    "show_scope_group_details",
+    "show_scope_operation_details",
+    "ask_scope_recommendation",
+    "apply_scope_recommendation",
+    "cancel",
+    "status",
+    "help"
+  ]
+}

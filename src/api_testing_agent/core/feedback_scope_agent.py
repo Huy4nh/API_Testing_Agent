@@ -295,7 +295,10 @@ Nguyên tắc cực quan trọng:
 - Ưu tiên trả operation_id chính xác.
 - Không trả text như "group yt" nếu có thể trả operation_id/path/tag thật.
 - Không tự biến yêu cầu đổi operation scope thành sửa test data.
-
+- Nếu user nhắc một từ vừa có thể là HTTP method vừa là group/path/tag trong catalog, hãy ưu tiên nghĩa theo catalog group/path/tag khi ngữ cảnh là scope mutation.
+- Ví dụ target có group 'Post' hoặc path '/post/x', user nói 'thêm post đi' thì phải hiểu là add operation thuộc group/path Post, không phải HTTP method POST chung chung.
+- Nếu chỉ có một operation hợp lý khớp với từ user nói, hãy chọn operation đó thay vì trả invalid_feedback.
+- Với câu 'bỏ A thay bằng B', hãy dùng update_scope hoặc mixed_mutation, remove A và add B trong cùng một decision.
 Trả về DUY NHẤT một JSON object hợp lệ, không markdown, không giải thích ngoài JSON.
 
 Schema:

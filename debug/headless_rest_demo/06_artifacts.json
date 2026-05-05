@@ -1,0 +1,67 @@
+﻿{
+    "ok":  true,
+    "operation":  "list_workflow_artifacts",
+    "actor_context":  {
+                          "actor_id":  null,
+                          "session_id":  null,
+                          "user_id":  null,
+                          "org_id":  null
+                      },
+    "workflow":  null,
+    "snapshot":  {
+                     "workflow_id":  "7737c3e4f7f74dedaa677429a0b16fee",
+                     "thread_id":  "wf-f1cd8e2035a6416ea7f03ba43b6c92ee",
+                     "current_phase":  "pending_review",
+                     "current_subphase":  null,
+                     "current_target":  "img_api_prod",
+                     "original_user_text":  "test img",
+                     "selected_target":  "img_api_prod",
+                     "candidate_targets":  [
+                                               "img_local",
+                                               "img_api_staging",
+                                               "img_api_prod"
+                                           ],
+                     "canonical_command":  "test target img_api_prod /img POST positive missing invalid",
+                     "understanding_explanation":  "Initial understanding: ÄÃ£ xÃ¡c Äá»nh target lÃ  `img_api_prod` vÃ  ÄÃ£ chá»t scope cuá»i cÃ¹ng theo xÃ¡c nháº­n cá»§a ngÆ°á»i dÃ¹ng. NhÃ³m ÄÃ£ chá»n: img. NhÃ³m bá» loáº¡i trá»«: fb, post, x, yt. Operation cuá»i cÃ¹ng: HTTPMETHOD.POST /img. LÃ½ do: NgÆ°á»i dÃ¹ng chá» muá»n test nhÃ³m Img, khÃ´ng test cÃ¡c nhÃ³m khÃ¡c. NhÃ³m Img chá»©a operation image_generate_img_post. Initial scope operations: POST /img. Current approved review scope for target `img_api_prod`: Final active operations: POST /img. Final approved scope operations: POST /img.",
+                     "preferred_language":  "vi",
+                     "language_policy":  "adaptive",
+                     "finalized":  false,
+                     "cancelled":  false,
+                     "rerun_requested":  false,
+                     "rerun_user_text":  null,
+                     "pending_question":  "Do you want to specifically test the **POST /img** endpoint (belonging to the \u0027Img\u0027 group) on the target **img_api_prod**, or do you want to test all the other endpoints (such as POST /FB, POST /post/x, POST /X, POST /X/content, POST /YT)?",
+                     "last_router_decision":  "review_result_status=pending_review",
+                     "last_scope_user_message":  null,
+                     "artifact_refs":  [
+                                           {
+                                               "artifact_type":  "draft_report_json",
+                                               "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.json",
+                                               "stage":  "review",
+                                               "storage_backend":  "filesystem"
+                                           },
+                                           {
+                                               "artifact_type":  "draft_report_md",
+                                               "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.md",
+                                               "stage":  "review",
+                                               "storage_backend":  "filesystem"
+                                           }
+                                       ],
+                     "active_review_id":  "wf-f1cd8e2035a6416ea7f03ba43b6c92ee",
+                     "active_report_session_id":  null
+                 },
+    "artifacts":  [
+                      {
+                          "artifact_type":  "draft_report_json",
+                          "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.json",
+                          "stage":  "review",
+                          "storage_backend":  "filesystem"
+                      },
+                      {
+                          "artifact_type":  "draft_report_md",
+                          "path":  "reports\\testcase_drafts\\img_api_prod\\wf-f1cd8e2035a6416ea7f03ba43b6c92ee\\round_01.md",
+                          "stage":  "review",
+                          "storage_backend":  "filesystem"
+                      }
+                  ],
+    "error":  null
+}

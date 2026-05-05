@@ -40,6 +40,13 @@ class TestcaseReviewState(TypedDict):
     review_action: NotRequired[str]
     latest_feedback: NotRequired[str]
 
+    # ===== Scope trace / report consistency =====
+    initial_understanding_explanation: NotRequired[str]
+    initial_scope_operation_refs: NotRequired[list[str]]
+    current_scope_explanation: NotRequired[str]
+    current_scope_operation_refs: NotRequired[list[str]]
+    scope_change_history: NotRequired[list[dict[str, Any]]]
+
 
 def build_testcase_review_graph(
     agent: AITestCaseAgent,
@@ -71,9 +78,26 @@ def build_testcase_review_graph(
         logger.info("Starting generate_draft_node.")
 
         current_operation_contexts = list(state.get("operation_contexts", []))
-        all_operation_contexts = list(state.get("all_operation_contexts", current_operation_contexts))
+        all_operation_contexts = list(
+            state.get("all_operation_contexts", current_operation_contexts)
+        )
+        previous_scope_refs = _operation_refs(current_operation_contexts)
+
         scope_note = state.get("scope_note")
-        canonical_command = state.get("canonical_command", "")
+        feedback_history = list(state.get("feedback_history", []))
+        latest_feedback = feedback_history[-1] if feedback_history else None
+
+        initial_understanding_explanation = str(
+            state.get("initial_understanding_explanation")
+            or state.get("understanding_explanation")
+            or ""
+        ).strip()
+
+        initial_scope_operation_refs = list(
+            state.get("initial_scope_operation_refs") or previous_scope_refs
+        )
+
+        scope_change_history = list(state.get("scope_change_history", []))
 
         logger.info(
             f"Initial scope contains {len(current_operation_contexts)} operation(s)."
@@ -85,20 +109,51 @@ def build_testcase_review_graph(
                 target_name=state["target_name"],
                 current_operation_contexts=current_operation_contexts,
                 all_operation_contexts=all_operation_contexts,
-                feedback_history=list(state.get("feedback_history", [])),
+                feedback_history=feedback_history,
             )
             current_operation_contexts = refined_scope.operation_contexts
             scope_note = refined_scope.scope_note
 
             logger.info(
-                f"Scope refinement completed. Refined scope contains {len(current_operation_contexts)} operation(s)."
+                "Scope refinement completed. "
+                f"Refined scope contains {len(current_operation_contexts)} operation(s)."
             )
 
-        # Đồng bộ canonical command theo scope hiện tại
+        current_scope_refs = _operation_refs(current_operation_contexts)
+
+        scope_changed = previous_scope_refs != current_scope_refs
+        if latest_feedback and scope_changed:
+            scope_change_history = _append_scope_change_event(
+                history=scope_change_history,
+                feedback=latest_feedback,
+                before_refs=previous_scope_refs,
+                after_refs=current_scope_refs,
+                scope_note=scope_note,
+            )
+
+        current_scope_explanation = _build_current_scope_explanation(
+            target_name=state["target_name"],
+            operation_contexts=current_operation_contexts,
+            feedback_history=feedback_history,
+            scope_note=scope_note,
+        )
+
+        # Đồng bộ canonical command theo scope hiện tại.
         canonical_command = _build_canonical_command_from_scope(
             target_name=state["target_name"],
             operation_contexts=current_operation_contexts,
             plan=state["plan"],
+        )
+
+        # Quan trọng:
+        # understanding_explanation phải phản ánh scope hiện tại, không giữ mãi explanation cũ.
+        # Nếu không, final report sẽ nhìn như "understanding nói simple nhưng execution chạy coins".
+        understanding_explanation = _build_scope_trace_understanding(
+            initial_understanding_explanation=initial_understanding_explanation,
+            initial_scope_operation_refs=initial_scope_operation_refs,
+            current_scope_explanation=current_scope_explanation,
+            current_scope_operation_refs=current_scope_refs,
+            scope_change_history=scope_change_history,
         )
 
         logger.info(f"Canonical command rebuilt: {canonical_command}")
@@ -112,18 +167,21 @@ def build_testcase_review_graph(
                 operation_id=str(operation_ctx.get("operation_id", "-")),
             )
             operation_logger.info(
-                f"Generating testcase draft for {operation_ctx.get('method', '-')} {operation_ctx.get('path', '-')}"
+                f"Generating testcase draft for "
+                f"{operation_ctx.get('method', '-')} {operation_ctx.get('path', '-')}"
             )
 
             context = {
                 "target_name": state["target_name"],
                 "original_user_text": state["user_request_text"],
                 "canonical_command": canonical_command,
-                "understanding_explanation": state.get("understanding_explanation"),
+                "understanding_explanation": understanding_explanation,
                 "operation": operation_ctx,
                 "plan": state["plan"],
-                "feedback_history": state.get("feedback_history", []),
+                "feedback_history": feedback_history,
                 "scope_note": scope_note,
+                "current_scope_explanation": current_scope_explanation,
+                "scope_change_history": scope_change_history,
                 "rules": [
                     "Sinh testcase bám đúng phạm vi operation hiện tại.",
                     "Không được bịa endpoint mới.",
@@ -158,20 +216,27 @@ def build_testcase_review_graph(
             round_number=round_no,
             original_user_text=state["user_request_text"],
             canonical_command=canonical_command,
-            understanding_explanation=state.get("understanding_explanation"),
+            understanding_explanation=understanding_explanation,
             draft_groups=draft_groups,
-            feedback_history=list(state.get("feedback_history", [])),
+            feedback_history=feedback_history,
             plan=state["plan"],
             operation_contexts=current_operation_contexts,
             scope_note=scope_note,
         )
 
         logger.info(
-            f"Draft report written. json_path={report.json_path}, md_path={report.markdown_path}"
+            f"Draft report written. json_path={report.json_path}, "
+            f"md_path={report.markdown_path}"
         )
 
         return {
             "canonical_command": canonical_command,
+            "understanding_explanation": understanding_explanation,
+            "initial_understanding_explanation": initial_understanding_explanation,
+            "initial_scope_operation_refs": initial_scope_operation_refs,
+            "current_scope_explanation": current_scope_explanation,
+            "current_scope_operation_refs": current_scope_refs,
+            "scope_change_history": scope_change_history,
             "operation_contexts": current_operation_contexts,
             "draft_groups": draft_groups,
             "draft_preview": report.preview_text,
@@ -192,6 +257,11 @@ def build_testcase_review_graph(
                 "original_user_text": state.get("user_request_text", ""),
                 "canonical_command": state.get("canonical_command", ""),
                 "understanding_explanation": state.get("understanding_explanation"),
+                "initial_understanding_explanation": state.get(
+                    "initial_understanding_explanation"
+                ),
+                "current_scope_explanation": state.get("current_scope_explanation"),
+                "scope_change_history": state.get("scope_change_history", []),
                 "scope_note": state.get("scope_note"),
                 "preview": state.get("draft_preview", ""),
                 "draft_groups": state.get("draft_groups", []),
@@ -298,11 +368,11 @@ def _build_canonical_command_from_scope(
         parts.append(path)
         parts.append(method)
 
-    # Giữ nguyên test types hiện tại
+    # Giữ nguyên test types hiện tại.
     test_types = list(plan.get("test_types", []))
     parts.extend(_build_test_type_tokens(test_types))
 
-    # Giữ nguyên ignore fields
+    # Giữ nguyên ignore fields.
     ignore_fields = list(plan.get("ignore_fields", []))
     for field_name in ignore_fields:
         parts.extend(["ignore", "field", str(field_name)])
@@ -339,3 +409,141 @@ def _build_test_type_tokens(test_types: list[str]) -> list[str]:
         tokens.append("invalid")
 
     return tokens
+
+
+def _operation_refs(operation_contexts: list[dict[str, Any]]) -> list[str]:
+    refs: list[str] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    for operation in operation_contexts:
+        method = str(operation.get("method", "")).strip().upper()
+        path = str(operation.get("path", "")).strip()
+        operation_id = str(operation.get("operation_id", "")).strip()
+
+        if not method and not path and not operation_id:
+            continue
+
+        key = (operation_id, method, path)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if method and path:
+            refs.append(f"{method} {path}")
+        elif operation_id:
+            refs.append(operation_id)
+        else:
+            refs.append(f"{method} {path}".strip())
+
+    return refs
+
+
+def _append_scope_change_event(
+    *,
+    history: list[dict[str, Any]],
+    feedback: str,
+    before_refs: list[str],
+    after_refs: list[str],
+    scope_note: str | None,
+) -> list[dict[str, Any]]:
+    cleaned_feedback = feedback.strip()
+
+    if history:
+        last = history[-1]
+        if (
+            str(last.get("feedback", "")).strip() == cleaned_feedback
+            and list(last.get("after", [])) == after_refs
+        ):
+            return history
+
+    return history + [
+        {
+            "feedback": cleaned_feedback,
+            "before": before_refs,
+            "after": after_refs,
+            "scope_note": scope_note,
+        }
+    ]
+
+
+def _build_current_scope_explanation(
+    *,
+    target_name: str,
+    operation_contexts: list[dict[str, Any]],
+    feedback_history: list[str],
+    scope_note: str | None,
+) -> str:
+    current_refs = _operation_refs(operation_contexts)
+
+    parts: list[str] = [
+        f"Current approved review scope for target `{target_name}`:"
+    ]
+
+    if current_refs:
+        parts.append("Final active operations: " + ", ".join(current_refs) + ".")
+    else:
+        parts.append("Final active operations: none.")
+
+    if feedback_history:
+        parts.append(
+            "Latest review feedback: "
+            f"`{str(feedback_history[-1]).strip()}`."
+        )
+
+    if scope_note:
+        parts.append(f"Scope note: {scope_note}")
+
+    return " ".join(parts).strip()
+
+
+def _build_scope_trace_understanding(
+    *,
+    initial_understanding_explanation: str,
+    initial_scope_operation_refs: list[str],
+    current_scope_explanation: str,
+    current_scope_operation_refs: list[str],
+    scope_change_history: list[dict[str, Any]],
+) -> str:
+    pieces: list[str] = []
+
+    initial = initial_understanding_explanation.strip()
+    if initial:
+        pieces.append("Initial understanding: " + initial)
+
+    if initial_scope_operation_refs:
+        pieces.append(
+            "Initial scope operations: "
+            + ", ".join(initial_scope_operation_refs)
+            + "."
+        )
+
+    if scope_change_history:
+        pieces.append("Scope changed during review:")
+        for index, item in enumerate(scope_change_history, start=1):
+            feedback = str(item.get("feedback", "")).strip()
+            before_refs = [str(ref) for ref in list(item.get("before", []))]
+            after_refs = [str(ref) for ref in list(item.get("after", []))]
+            scope_note = str(item.get("scope_note", "") or "").strip()
+
+            event_parts = [f"{index}. Feedback `{feedback}`"]
+            if before_refs:
+                event_parts.append("before: " + ", ".join(before_refs))
+            if after_refs:
+                event_parts.append("after: " + ", ".join(after_refs))
+            if scope_note:
+                event_parts.append("note: " + scope_note)
+
+            pieces.append("; ".join(event_parts) + ".")
+
+    current = current_scope_explanation.strip()
+    if current:
+        pieces.append(current)
+
+    if current_scope_operation_refs:
+        pieces.append(
+            "Final approved scope operations: "
+            + ", ".join(current_scope_operation_refs)
+            + "."
+        )
+
+    return " ".join(pieces).strip()

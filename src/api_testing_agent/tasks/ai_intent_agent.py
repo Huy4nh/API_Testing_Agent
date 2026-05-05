@@ -157,8 +157,21 @@ class AIIntentAgent:
             "or 'thực hiện theo gợi ý đi', choose apply_scope_recommendation.\n"
             "- If the user says fuzzy scope selections like 'just the basic ones', 'skip NFT', or 'coin market only', choose resume_scope_confirmation.\n"
             "- If the user is in report_interaction and starts a clearly new test topic, choose start_new_workflow.\n"
+            "- In pending_review, if the user asks to add/remove/replace/swap/change operations, endpoints, groups, or testcase scope, choose resume_review.\n"
+            "- Examples of pending_review resume_review messages: 'thêm post đi', 'thêm X post ấy', 'bỏ x post thay bằng yt', 'thay x post bằng yt', 'remove X post and add YT', 'replace current second operation with YT'.\n"
+            "- In pending_review, do not classify scope mutation feedback as clarify just because the wording is short or informal.\n"
+            "- In pending_review, choose clarify only when the user message cannot be interpreted as approve, cancel, scope/testcase revision, scope question, or new task.\n"
         )
+    def _scope_recommendation_mode_value(self, mode: object) -> str | None:
+        if mode is None:
+            return None
 
+        value = getattr(mode, "value", None)
+        if isinstance(value, str):
+            return value
+
+        cleaned = str(mode).strip()
+        return cleaned or None
     def _build_human_prompt(
         self,
         *,
@@ -194,9 +207,9 @@ class AIIntentAgent:
         ]
 
         latest_scope_recommendation = {
-            "mode": snapshot.latest_scope_recommendation.mode.value
-            if snapshot.latest_scope_recommendation.mode is not None
-            else None,
+            "mode": self._scope_recommendation_mode_value(
+                snapshot.latest_scope_recommendation.mode
+            ),
             "group_ids": list(snapshot.latest_scope_recommendation.group_ids),
             "operation_ids": list(snapshot.latest_scope_recommendation.operation_ids),
             "rationale": snapshot.latest_scope_recommendation.rationale,
@@ -206,9 +219,9 @@ class AIIntentAgent:
         }
 
         applied_scope_recommendation = {
-            "mode": snapshot.applied_scope_recommendation.mode.value
-            if snapshot.applied_scope_recommendation.mode is not None
-            else None,
+            "mode": self._scope_recommendation_mode_value(
+                snapshot.applied_scope_recommendation.mode
+            ),
             "group_ids": list(snapshot.applied_scope_recommendation.group_ids),
             "operation_ids": list(snapshot.applied_scope_recommendation.operation_ids),
             "rationale": snapshot.applied_scope_recommendation.rationale,

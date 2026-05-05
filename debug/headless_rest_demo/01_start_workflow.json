@@ -1,0 +1,50 @@
+﻿{
+    "ok":  true,
+    "operation":  "start_workflow",
+    "actor_context":  {
+                          "actor_id":  "demo_script",
+                          "session_id":  "demo_headless_rest_workflow",
+                          "user_id":  "local_user",
+                          "org_id":  "local_org"
+                      },
+    "workflow":  {
+                     "workflow_id":  "7737c3e4f7f74dedaa677429a0b16fee",
+                     "thread_id":  "wf-f1cd8e2035a6416ea7f03ba43b6c92ee",
+                     "phase":  "pending_target_selection",
+                     "current_target":  null,
+                     "assistant_message":  "Which environment do you want to test the img on? Local, Staging, or Production?",
+                     "status_message":  "Workflow `7737c3e4f7f74dedaa677429a0b16fee` is currently in phase `pending_target_selection`.",
+                     "selected_target":  null,
+                     "candidate_targets":  [
+                                               "img_local",
+                                               "img_api_staging",
+                                               "img_api_prod"
+                                           ],
+                     "selection_question":  "Which environment do you want to test the img on? Local, Staging, or Production?",
+                     "scope_confirmation_question":  null,
+                     "scope_confirmation_summary":  null,
+                     "canonical_command":  null,
+                     "understanding_explanation":  null,
+                     "preferred_language":  "en",
+                     "language_policy":  "adaptive",
+                     "available_actions":  [
+                                               "select_target",
+                                               "cancel",
+                                               "status",
+                                               "help"
+                                           ],
+                     "needs_user_input":  true,
+                     "finalized":  false,
+                     "cancelled":  false,
+                     "rerun_requested":  false,
+                     "rerun_user_text":  null,
+                     "artifacts":  [
+
+                                   ]
+                 },
+    "snapshot":  null,
+    "artifacts":  [
+
+                  ],
+    "error":  null
+}
